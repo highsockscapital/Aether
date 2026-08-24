@@ -548,7 +548,7 @@ private fun LegacyProviderSetupStep(
     }
     val providerChoices = remember(providerSearch, selectedAuthMethod) {
         val query = providerSearch.trim().lowercase()
-        PiProviderCatalog.providers.filter { provider ->
+        PiProviderCatalog.providers.filterNot { it.hiddenFromPickers }.filter { provider ->
             val supportsMethod = when (selectedAuthMethod) {
                 ProviderAuthMethod.ApiKey -> provider.supportsApiKey
                 ProviderAuthMethod.OAuth -> provider.supportsOAuth

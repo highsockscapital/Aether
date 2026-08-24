@@ -503,7 +503,7 @@ fun ProviderConfigurationForm(
             ProviderFormDropdownField(
                 label = stringResource(Res.string.provider_form_provider),
                 selectedValue = selectedDefinition.displayName,
-                options = PiProviderCatalog.providers,
+                options = PiProviderCatalog.providers.filterNot { it.hiddenFromPickers },
                 onSelected = state::applyProviderDefaults,
             )
         }
@@ -1017,7 +1017,7 @@ fun AddProviderWizard(
     val selectedAuthMethod = ProviderAuthMethod.valueOf(selectedAuthMethodName)
     val matchingProviders = remember(providerSearch, selectedAuthMethod) {
         val query = providerSearch.trim().lowercase()
-        PiProviderCatalog.providers.filter { provider ->
+        PiProviderCatalog.providers.filterNot { it.hiddenFromPickers }.filter { provider ->
             val supportsMethod = when (selectedAuthMethod) {
                 ProviderAuthMethod.ApiKey -> provider.supportsInteractiveApiKey
                 ProviderAuthMethod.OAuth -> provider.supportsOAuth
