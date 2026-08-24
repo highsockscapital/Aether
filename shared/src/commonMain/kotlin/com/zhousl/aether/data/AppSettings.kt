@@ -176,6 +176,8 @@ data class AppSettings(
     val onboardingCompletedVersion: Int = 0,
     val privacyPolicyAccepted: Boolean = false,
     val lastUpdateCheckAtMillis: Long = 0L,
+    val autoCompactEnabled: Boolean = true,
+    val autoCompactThresholdPercent: Int = 85,
     val subagentsSharedOpenRouterApiKey: String = "",
     val subagentConfigs: Map<String, SubagentConfig> = emptyMap(),
 )

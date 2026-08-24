@@ -5113,7 +5113,28 @@ class AetherViewModel(
         )
     }
 
+    private val lastAutoCompactedTotalTokensBySession = mutableMapOf<String, Long>()
+
+    private fun maybeAutoCompact(event: SessionTurnEvent) {
+        val snapshot = _uiState.value
+        if (!snapshot.settings.autoCompactEnabled) return
+        if (snapshot.currentSessionId != event.sessionId) return
+        val usage = event.tokenUsage ?: return
+        val used = usage.withMissingTotalResolved().totalTokens
+        if (used <= 0L) return
+        val limit = snapshot.settings.toPiModelConfig(emptyMap(), false).contextWindow
+        if (limit <= 0L) return
+        val thresholdPercent = snapshot.settings.autoCompactThresholdPercent.coerceIn(50, 95).toLong()
+        if (used * 100L < limit * thresholdPercent) return
+        // Avoid re-compacting in a loop at the same fill level.
+        val lastCompactedAt = lastAutoCompactedTotalTokensBySession[event.sessionId] ?: 0L
+        if (used < lastCompactedAt + limit / 10) return
+        lastAutoCompactedTotalTokensBySession[event.sessionId] = used
+        compactSession(sessionId = event.sessionId, manual = false, snapshot = snapshot)
+    }
+
     private fun captureTurnCompleted(event: SessionTurnEvent) {
+        maybeAutoCompact(event)
         val tokenProperties = tokenUsageAnalyticsProperties(event)
         captureAnalyticsEvent(
             event = "conversation turn completed",

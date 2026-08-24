@@ -137,6 +137,8 @@ class SettingsRepository(
             defaultTitleModelKey = preferences[DEFAULT_TITLE_MODEL_KEY].orEmpty(),
             defaultNamingModelKey = preferences[DEFAULT_NAMING_MODEL_KEY].orEmpty(),
             defaultCompactingModelKey = preferences[DEFAULT_COMPACTING_MODEL_KEY].orEmpty(),
+            autoCompactEnabled = preferences[AUTO_COMPACT_ENABLED] ?: true,
+            autoCompactThresholdPercent = preferences[AUTO_COMPACT_THRESHOLD_PERCENT] ?: 85,
             defaultSelectedSkillIds = parseStringArray(
                 preferences[DEFAULT_SELECTED_SKILL_IDS].orEmpty()
             ),
@@ -399,6 +401,8 @@ class SettingsRepository(
             it[DEFAULT_TITLE_MODEL_KEY] = settings.defaultTitleModelKey
             it[DEFAULT_NAMING_MODEL_KEY] = settings.defaultNamingModelKey
             it[DEFAULT_COMPACTING_MODEL_KEY] = settings.defaultCompactingModelKey
+            it[AUTO_COMPACT_ENABLED] = settings.autoCompactEnabled
+            it[AUTO_COMPACT_THRESHOLD_PERCENT] = settings.autoCompactThresholdPercent
             it[DEFAULT_SELECTED_SKILL_IDS] = serializeStringArray(settings.defaultSelectedSkillIds)
             it.remove(PROVIDER)
             it.remove(BASIC_FUNCTION_CALLING_COMPATIBILITY_MODE)
@@ -482,6 +486,8 @@ class SettingsRepository(
             it[DEFAULT_TITLE_MODEL_KEY] = settings.defaultTitleModelKey
             it[DEFAULT_NAMING_MODEL_KEY] = settings.defaultNamingModelKey
             it[DEFAULT_COMPACTING_MODEL_KEY] = settings.defaultCompactingModelKey
+            it[AUTO_COMPACT_ENABLED] = settings.autoCompactEnabled
+            it[AUTO_COMPACT_THRESHOLD_PERCENT] = settings.autoCompactThresholdPercent
             it[DEFAULT_SELECTED_SKILL_IDS] = serializeStringArray(settings.defaultSelectedSkillIds)
             it.remove(PROVIDER)
             it.remove(BASIC_FUNCTION_CALLING_COMPATIBILITY_MODE)
@@ -579,6 +585,8 @@ class SettingsRepository(
         val DEFAULT_TITLE_MODEL_KEY = stringPreferencesKey("default_title_model_key")
         val DEFAULT_NAMING_MODEL_KEY = stringPreferencesKey("default_naming_model_key")
         val DEFAULT_COMPACTING_MODEL_KEY = stringPreferencesKey("default_compacting_model_key")
+        val AUTO_COMPACT_ENABLED = booleanPreferencesKey("auto_compact_enabled")
+        val AUTO_COMPACT_THRESHOLD_PERCENT = intPreferencesKey("auto_compact_threshold_percent")
         val MODEL_CATALOG_CACHE_JSON = stringPreferencesKey("model_catalog_cache_json")
         val THINKING_CATALOG_CACHE_JSON = stringPreferencesKey("thinking_catalog_cache_json")
         val DEFAULT_SELECTED_SKILL_IDS = stringPreferencesKey("default_selected_skill_ids")
