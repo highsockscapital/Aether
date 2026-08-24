@@ -176,6 +176,15 @@ data class AppSettings(
     val onboardingCompletedVersion: Int = 0,
     val privacyPolicyAccepted: Boolean = false,
     val lastUpdateCheckAtMillis: Long = 0L,
+    val subagentsSharedOpenRouterApiKey: String = "",
+    val subagentConfigs: Map<String, SubagentConfig> = emptyMap(),
+)
+
+@Serializable
+data class SubagentConfig(
+    val enabled: Boolean = true,
+    val modelId: String = "",
+    val apiKeyOverride: String = "",
 )
 
 @Serializable
