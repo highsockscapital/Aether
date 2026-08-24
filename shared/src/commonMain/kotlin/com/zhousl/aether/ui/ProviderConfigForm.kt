@@ -1391,6 +1391,8 @@ fun ProviderWizardChoiceRow(
 private fun ProviderWizardSearchField(
     value: String,
     onValueChange: (String) -> Unit,
+    placeholderRes: org.jetbrains.compose.resources.StringResource =
+        Res.string.provider_add_search_placeholder,
 ) {
     Row(
         modifier = Modifier
@@ -1418,7 +1420,7 @@ private fun ProviderWizardSearchField(
                 Box {
                     if (value.isBlank()) {
                         Text(
-                            text = stringResource(Res.string.provider_add_search_placeholder),
+                            text = stringResource(placeholderRes),
                             style = MaterialTheme.typography.bodyLarge,
                             color = AetherOnSurfaceVariant.copy(alpha = 0.65f),
                         )
@@ -2060,11 +2062,27 @@ private fun ProviderModelListField(
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
+            var modelSearchQuery by rememberSaveable { mutableStateOf("") }
+            val trimmedModelQuery = modelSearchQuery.trim()
+            val visibleModels = remember(models, trimmedModelQuery) {
+                if (trimmedModelQuery.isBlank()) {
+                    models
+                } else {
+                    val needle = trimmedModelQuery.lowercase()
+                    models.filter { model -> model.lowercase().contains(needle) }
+                }
+            }
+            ProviderWizardSearchField(
+                value = modelSearchQuery,
+                onValueChange = { modelSearchQuery = it },
+                placeholderRes = Res.string.provider_form_search_models,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                items(models, key = { model -> model }) { model ->
+                items(visibleModels, key = { model -> model }) { model ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2081,6 +2099,16 @@ private fun ProviderModelListField(
                             text = model,
                             style = MaterialTheme.typography.bodyMedium,
                             color = AetherOnSurface,
+                        )
+                    }
+                }
+                if (visibleModels.isEmpty()) {
+                    item(key = "provider_model_search_empty") {
+                        Text(
+                            text = stringResource(Res.string.provider_form_no_models_match_search),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AetherOnSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 8.dp),
                         )
                     }
                 }

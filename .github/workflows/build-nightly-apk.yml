@@ -62,11 +62,18 @@ jobs:
           NIGHTLY_KEYSTORE_BASE64: ${{ secrets.NIGHTLY_KEYSTORE_BASE64 }}
         run: |
           mkdir -p "$RUNNER_TEMP/aether-signing"
-          echo "$NIGHTLY_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/aether-signing/aether-nightly.jks"
+          if [ -n "$NIGHTLY_KEYSTORE_BASE64" ]; then
+            echo "$NIGHTLY_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/aether-signing/aether-nightly.jks"
+            echo "has_keystore=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_keystore=false" >> "$GITHUB_OUTPUT"
+            echo "No nightly keystore secret found, falling back to debug signing."
+          fi
+        id: keystore
 
       - name: Build Nightly APK
         env:
-          NIGHTLY_KEYSTORE_FILE: ${{ runner.temp }}/aether-signing/aether-nightly.jks
+          NIGHTLY_KEYSTORE_FILE: ${{ steps.keystore.outputs.has_keystore == 'true' && format('{0}/aether-signing/aether-nightly.jks', runner.temp) || '' }}
           NIGHTLY_KEYSTORE_PASSWORD: ${{ secrets.NIGHTLY_KEYSTORE_PASSWORD }}
           NIGHTLY_KEY_ALIAS: ${{ secrets.NIGHTLY_KEY_ALIAS }}
           NIGHTLY_KEY_PASSWORD: ${{ secrets.NIGHTLY_KEY_PASSWORD }}
