@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Key
@@ -1429,6 +1430,16 @@ private fun ProviderWizardSearchField(
                 }
             },
         )
+        if (value.isNotBlank()) {
+            IconButton(onClick = { onValueChange("") }) {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = stringResource(Res.string.common_clear),
+                    tint = AetherOnSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
     }
 }
 
@@ -2044,24 +2055,6 @@ private fun ProviderModelListField(
 
         if (models.isNotEmpty()) {
             Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                ProviderModelListActionButton(
-                    label = stringResource(Res.string.provider_form_select_all_models),
-                    onClick = { onSetAllModelsEnabled(true) },
-                    enabled = enabledModelIds.size < models.size,
-                    modifier = Modifier.weight(1f),
-                )
-                ProviderModelListActionButton(
-                    label = stringResource(Res.string.provider_form_clear_all_models),
-                    onClick = { onSetAllModelsEnabled(false) },
-                    enabled = enabledModelIds.isNotEmpty(),
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Spacer(modifier = Modifier.height(10.dp))
             var modelSearchQuery by rememberSaveable { mutableStateOf("") }
             val trimmedModelQuery = modelSearchQuery.trim()
             val visibleModels = remember(models, trimmedModelQuery) {
@@ -2077,6 +2070,49 @@ private fun ProviderModelListField(
                 onValueChange = { modelSearchQuery = it },
                 placeholderRes = Res.string.provider_form_search_models,
             )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val filtering = trimmedModelQuery.isNotBlank()
+                val targetModels = if (filtering) visibleModels else models
+                ProviderModelListActionButton(
+                    label = if (filtering) {
+                        stringResource(Res.string.provider_form_select_visible_models)
+                    } else {
+                        stringResource(Res.string.provider_form_select_all_models)
+                    },
+                    onClick = {
+                        if (filtering) {
+                            targetModels.forEach { model ->
+                                if (!enabledModelIds.contains(model)) onToggleModel(model, true)
+                            }
+                        } else {
+                            onSetAllModelsEnabled(true)
+                        }
+                    },
+                    enabled = targetModels.any { !enabledModelIds.contains(it) },
+                    modifier = Modifier.weight(1f),
+                )
+                ProviderModelListActionButton(
+                    label = if (filtering) {
+                        stringResource(Res.string.provider_form_clear_visible_models)
+                    } else {
+                        stringResource(Res.string.provider_form_clear_all_models)
+                    },
+                    onClick = {
+                        if (filtering) {
+                            targetModels.forEach { model ->
+                                if (enabledModelIds.contains(model)) onToggleModel(model, false)
+                            }
+                        } else {
+                            onSetAllModelsEnabled(false)
+                        }
+                    },
+                    enabled = targetModels.any { enabledModelIds.contains(it) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
             Spacer(modifier = Modifier.height(10.dp))
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp),
