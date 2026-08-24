@@ -21,7 +21,7 @@ object BuiltInSubagents {
         val markdown: String,
     )
 
-    val all: List<Definition> = listOf(buildWatcher)
+    val all: List<Definition> get() = listOf(buildWatcher)
 
     fun find(name: String): Definition? = all.firstOrNull { it.name == name }
 
