@@ -70,7 +70,7 @@ class SettingsRepository(
         AppSettings(
             piProviderId = preferences[PI_PROVIDER_ID]
                 ?.takeIf(String::isNotBlank)
-                ?: inferLegacyPiProviderId(preferences[PROVIDER], storedBaseUrl),
+                ?: inferPiProviderIdFromBaseUrl(storedBaseUrl),
             providerConfigId = preferences[PROVIDER_CONFIG_ID].orEmpty(),
             providerAuthMethod = ProviderAuthMethod.fromStorage(preferences[PROVIDER_AUTH_METHOD]),
             apiKey = preferences[API_KEY].orEmpty(),
@@ -183,7 +183,7 @@ class SettingsRepository(
             val legacyModelId = prefs[MODEL_ID] ?: AppSettings().modelId
             val migratedPiProviderId = prefs[PI_PROVIDER_ID]
                 ?.takeIf(String::isNotBlank)
-                ?: inferLegacyPiProviderId(prefs[PROVIDER], legacyBaseUrl)
+                ?: inferPiProviderIdFromBaseUrl(legacyBaseUrl)
             val definition = PiProviderCatalog.resolve(migratedPiProviderId)
             var matchingConfig = prefs[PROVIDER_CONFIG_ID]
                 ?.let { currentId -> parsedConfigs.firstOrNull { it.id == currentId } }
@@ -303,8 +303,7 @@ class SettingsRepository(
             val current = parseProviderConfigs(prefs[PROVIDER_CONFIGS].orEmpty())
             val currentPiProviderId = prefs[PI_PROVIDER_ID]
                 ?.takeIf(String::isNotBlank)
-                ?: inferLegacyPiProviderId(
-                    prefs[PROVIDER],
+                ?: inferPiProviderIdFromBaseUrl(
                     prefs[BASE_URL] ?: AppSettings().baseUrl,
                 )
             val currentProviderConfigId = prefs[PROVIDER_CONFIG_ID].orEmpty()

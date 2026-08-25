@@ -6518,10 +6518,7 @@ class SunshineViewModel(
         val defaults = AppSettings()
         val importedBaseUrl = json.optString("baseUrl", defaults.baseUrl)
         val importedPiProviderId = json.optString("piProviderId").trim().ifBlank {
-            com.highsockscapital.sunshine.data.inferLegacyPiProviderId(
-                json.optString("provider"),
-                importedBaseUrl,
-            )
+            com.highsockscapital.sunshine.data.inferPiProviderIdFromBaseUrl(importedBaseUrl)
         }
         return AppSettings(
             piProviderId = importedPiProviderId,

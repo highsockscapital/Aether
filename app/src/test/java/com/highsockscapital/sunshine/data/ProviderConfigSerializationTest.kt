@@ -49,10 +49,10 @@ class ProviderConfigSerializationTest {
             ).toString()
         )
 
-        // The legacy type maps to a pi id that is no longer a built-in, so
-        // backfill comes from the custom endpoint fallback definition.
+        // Unknown legacy types are ignored; the config falls back to the
+        // custom endpoint definition for id, name, and base URL.
         val config = configs.single()
-        assertEquals("anthropic", config.piProviderId)
+        assertEquals("openai-compatible", config.piProviderId)
         assertEquals("OpenAI-compatible endpoint", config.name)
         assertEquals("https://api.openai.com/v1", config.baseUrl)
 

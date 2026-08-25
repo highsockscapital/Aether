@@ -392,7 +392,7 @@ fun parseProviderConfigs(rawValue: String): List<LlmProviderConfig> {
                 val storedPiProviderId = json.string("piProviderId").trim()
                 val storedBaseUrl = json.string("baseUrl").trim()
                 val piProviderId = storedPiProviderId.ifBlank {
-                    inferLegacyPiProviderId(json.string("providerType"), storedBaseUrl)
+                    inferPiProviderIdFromBaseUrl(storedBaseUrl)
                 }
                 val providerDefinition = PiProviderCatalog.resolve(piProviderId)
                 val providerName = json.string("name").trim()

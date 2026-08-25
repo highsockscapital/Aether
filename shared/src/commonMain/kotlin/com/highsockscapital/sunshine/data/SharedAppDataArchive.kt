@@ -375,7 +375,7 @@ private fun parseAndroidAppSettings(value: JsonObject): AppSettings {
     val defaults = AppSettings()
     val importedBaseUrl = value.stringValueOrDefault("baseUrl", defaults.baseUrl)
     val importedPiProviderId = value.stringValue("piProviderId").trim().ifBlank {
-        inferLegacyPiProviderId(value.stringValue("provider"), importedBaseUrl)
+        inferPiProviderIdFromBaseUrl(importedBaseUrl)
     }
     return AppSettings(
         piProviderId = importedPiProviderId,

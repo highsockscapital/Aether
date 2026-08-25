@@ -76,15 +76,8 @@ object PiProviderCatalog {
 
 fun PiProviderDefinition.modelsDevProviderIds(): List<String> = listOf(id)
 
-fun inferLegacyPiProviderId(
-    legacyProviderStorageValue: String?,
-    baseUrl: String,
-): String = when (legacyProviderStorageValue?.trim()) {
-    "openai_responses" -> "openai"
-    "anthropic_messages" -> "anthropic"
-    "vertex_express" -> "google-vertex"
-    else -> builtInProviderIdForHost(hostOf(baseUrl)) ?: DefaultPiProviderId
-}
+fun inferPiProviderIdFromBaseUrl(baseUrl: String): String =
+    builtInProviderIdForHost(hostOf(baseUrl)) ?: DefaultPiProviderId
 
 fun PiProviderDefinition.defaultAuthMethod(): ProviderAuthMethod = when {
     !supportsApiKey && supportsOAuth -> ProviderAuthMethod.OAuth
