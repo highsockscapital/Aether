@@ -790,4 +790,3 @@ private fun subagentCredentialsPayload(settings: AppSettings): JSONObject {
         put("overrides", overrides)
     }
 }
-}

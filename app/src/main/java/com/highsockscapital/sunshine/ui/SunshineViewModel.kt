@@ -2596,7 +2596,12 @@ class SunshineViewModel(
                     globalAgentsDirectoryOverride = agentsDirectory,
                 ).syncBuiltIns(configs)
             }.onFailure { throwable ->
-                diagnosticLogger.exception(throwable)
+                diagnosticLogger.exception(
+                    category = "pi_bridge",
+                    event = "builtin_subagents_sync_failed",
+                    throwable = throwable,
+                    level = "warn",
+                )
             }
         }
     }
@@ -5199,7 +5204,7 @@ class SunshineViewModel(
         if (!snapshot.settings.autoCompactEnabled) return
         if (snapshot.currentSessionId != event.sessionId) return
         val usage = event.tokenUsage ?: return
-        val used = usage.withMissingTotalResolved().totalTokens
+        val used = usage.withMissingTotalResolved().totalTokens ?: return
         if (used <= 0L) return
         val limit = snapshot.settings.toPiModelConfig(emptyMap(), false).contextWindow
         if (limit <= 0L) return
