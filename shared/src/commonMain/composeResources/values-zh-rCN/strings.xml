@@ -436,6 +436,8 @@
     <string name="settings_subagents_models_empty">未找到模型，请检查 API 密钥。</string>
     <string name="settings_subagents_search_models">搜索模型</string>
     <string name="settings_subagents_search_models_hint">缩小搜索范围以查看更多模型。</string>
+    <string name="settings_provider_legacy_note_title">关于此提供方类型</string>
+    <string name="settings_provider_legacy_note">该提供方以通用 OpenAI 兼容端点的形式保存。一切正常——基础网址、API 密钥和模型都会按原样工作。显示通用标签只是因为创建时未识别出具体的提供方类型。</string>
     <string name="settings_prioritize_sota_models">优先选择前沿模型</string>
     <string name="settings_prioritize_efficient_summary_models">优先选择高效总结模型</string>
     <string name="settings_automatic_model">自动选择</string>

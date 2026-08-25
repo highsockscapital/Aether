@@ -158,6 +158,7 @@ import com.highsockscapital.sunshine.data.ChatUsageStatisticsSnapshot
 import com.highsockscapital.sunshine.data.AppLanguage
 import com.highsockscapital.sunshine.data.AppThemeMode
 import com.highsockscapital.sunshine.data.LlmProviderConfig
+import com.highsockscapital.sunshine.data.DefaultPiProviderId
 import com.highsockscapital.sunshine.data.PiProviderCatalog
 import com.highsockscapital.sunshine.data.LocalRuntimeId
 import com.highsockscapital.sunshine.data.McpServerTestOperation
@@ -3054,6 +3055,33 @@ private fun ProviderEditPage(
             onBack()
         },
     ) {
+        if (formState.selectedDefinition.id == DefaultPiProviderId) {
+            SettingsCardGroup {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Rounded.Info,
+                            contentDescription = null,
+                            tint = SunshineOnSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.settings_provider_legacy_note_title),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = SunshineOnSurface,
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(R.string.settings_provider_legacy_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SunshineOnSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
         ProviderConfigurationForm(
             state = formState,
             existingProviderIds = existingProviderIds,

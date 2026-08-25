@@ -438,6 +438,8 @@
     <string name="settings_subagents_models_empty">No models found. Check the API key.</string>
     <string name="settings_subagents_search_models">Search models</string>
     <string name="settings_subagents_search_models_hint">Refine the search to see more models.</string>
+    <string name="settings_provider_legacy_note_title">About this provider type</string>
+    <string name="settings_provider_legacy_note">This provider was saved as a generic OpenAI-compatible endpoint. Nothing is wrong — your base URL, API key and models work exactly as configured. The generic label simply means no specific provider type was recognized when it was created.</string>
     <string name="settings_prioritize_sota_models">Prioritize the SOTA models</string>
     <string name="settings_prioritize_efficient_summary_models">Prioritize efficient summary models</string>
     <string name="settings_automatic_model">Automatic</string>
