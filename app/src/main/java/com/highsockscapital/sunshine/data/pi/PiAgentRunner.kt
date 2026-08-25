@@ -105,6 +105,7 @@ class PiAgentRunner(
                 val payload = JSONObject().apply {
                     val extensionLoadOptions = piExtensionStateRepository?.loadOptions()
                     put("model_config", settings.toPiModelConfig(thinkingLevelMap, isReasoningModel).toJson())
+                    put("subagent_credentials", subagentCredentialsPayload(settings))
                     put("session_id", resolvedSessionId)
                     if (sessionFile.isNotBlank()) put("session_file", sessionFile)
                     put("system_prompt", prompt())
@@ -766,4 +767,25 @@ private fun List<LlmMessage>.withSelectedSkillCommand(skillName: String?): List<
         listOf(LlmTextPart(command)) + user.contentParts
     }
     return toMutableList().apply { this[userIndex] = user.copy(contentParts = updatedParts) }
+}
+
+/**
+ * Per-subagent OpenRouter credentials for the native session payload. The
+ * bridge publishes these to the pi-subagents extension, which applies the
+ * matching key (per-agent override first, then the shared one) when spawning
+ * a subagent session. Always present so reused sessions pick up cleared
+ * credentials too.
+ */
+private fun subagentCredentialsPayload(settings: AppSettings): JSONObject {
+    val overrides = JSONObject()
+    for ((name, config) in settings.subagentConfigs) {
+        val key = config.apiKeyOverride.trim()
+        if (key.isNotEmpty() && name.isNotBlank()) overrides.put(name.trim(), key)
+    }
+    val shared = settings.subagentsSharedOpenRouterApiKey.trim()
+    return JSONObject().apply {
+        put("shared_api_key", shared)
+        put("overrides", overrides)
+    }
+}
 }

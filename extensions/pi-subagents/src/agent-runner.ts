@@ -22,6 +22,7 @@ import { runInChildSessionContext } from "./child-context.js";
 import { buildParentContext, extractText } from "./context.js";
 import { DEFAULT_AGENTS } from "./default-agents.js";
 import { detectEnv } from "./env.js";
+import { resolveSunshineSubagentApiKey, wrapModelRuntimeWithApiKey } from "./sunshine-credentials.js";
 import { buildMemoryBlock, buildReadOnlyMemoryBlock } from "./memory.js";
 import { createNestedSubagentTools, getMaxSubagentDepth, type NestedAgentManager } from "./nested-tools.js";
 import { buildAgentPrompt, type PromptExtras } from "./prompts.js";
@@ -892,6 +893,18 @@ export async function runAgent(
   // modelRuntime, but ExtensionContext still exposes only the registry facade.
   // Pass both so the full supported Pi range retains the parent's providers.
   const parentModelRuntime = (ctx.modelRegistry as unknown as { runtime?: unknown }).runtime;
+  // Sunshine per-agent credentials: apply this agent's own OpenRouter key (or
+  // the shared one) by wrapping the inherited runtime so every auth lookup in
+  // the child session resolves to it. Only OpenRouter models are overridden.
+  const sunshineApiKey = resolveSunshineSubagentApiKey(agentConfig?.name ?? type);
+  const sunshineApiKeyApplies =
+    sunshineApiKey.length > 0 &&
+    parentModelRuntime !== undefined &&
+    model !== undefined &&
+    (model as { provider?: unknown }).provider === "openrouter";
+  const childModelRuntime = sunshineApiKeyApplies
+    ? wrapModelRuntimeWithApiKey(parentModelRuntime, sunshineApiKey)
+    : parentModelRuntime;
   const sessionOpts: Parameters<typeof createAgentSession>[0] & {
     modelRegistry: ExtensionContext["modelRegistry"];
     modelRuntime?: unknown;
@@ -905,7 +918,7 @@ export async function runAgent(
     // pre-0.80.8 the field exists only via the `modelRuntime?: unknown` shim
     // above, while newer Pi types it as `ModelRuntime` — a shape an opaque
     // `unknown` read off the private facade field can never satisfy.
-    ...(parentModelRuntime !== undefined && { modelRuntime: parentModelRuntime as never }),
+    ...(childModelRuntime !== undefined && { modelRuntime: childModelRuntime as never }),
     model,
     tools: sessionTools,
     customTools: nestedTools,
