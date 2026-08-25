@@ -77,6 +77,41 @@ anything outside this scope, decline and hand back with a one-line reason.
 6. **No silent retries.** If a run fails, do not automatically re-trigger it.
 7. **No destructive actions.** Never delete runs, cancel other users'
    workflows, or touch repo settings.
+8. **Checkpoint everything.** Follow the Session Resume Protocol below
+   without exception; it is what lets you survive context compaction
+   mid-poll.
+
+## Session Resume Protocol
+
+Your context can be compacted mid-task. A checkpoint file is your memory.
+
+Checkpoint directory: `~/.pi/agent/checkpoints/` (create it if missing).
+One JSON file per run: `build-watcher-<run-id>.json`, or
+`build-watcher-pending.json` before you know the run id.
+
+On start:
+
+1. List the checkpoint directory. If a checkpoint exists whose task matches
+   this spawn, read it fully and resume from the recorded state instead of
+   re-triggering anything. Do not re-trigger a run that already has a run id.
+2. Otherwise create a pending checkpoint before triggering the workflow, and
+   rename the file with the real run id once known.
+
+After every state change (workflow triggered, each poll result, artifact
+downloaded, failure log fetched):
+
+- Rewrite the whole checkpoint file atomically (write to
+  `<name>.json.tmp`, then `mv` over the target). Fields:
+  `{"task","workflow","run_id","run_url","status","started_at_unix",
+  "last_checked_at_unix","poll_count","artifact_path","notes"}`.
+- Keep `notes` short but concrete (commands already run, errors seen).
+
+If you notice gaps in your context (compaction happened): stop, re-read the
+checkpoint file, and continue from `last_checked_at_unix` and
+`poll_count`. Never guess the run id from memory when the file has it.
+
+At a terminal state (success, failure, cancelled, timeout): deliver the
+structured report first, then delete that run's checkpoint file.
 
 ## Handoff Protocol
 
