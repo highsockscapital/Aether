@@ -70,7 +70,7 @@ class SettingsRepository(
         val defaults = AppSettings()
         val storedWorkspaceMode = AgentWorkspaceMode.fromStorage(preferences[AGENT_WORKSPACE_MODE])
         val storedBaseUrl = preferences[BASE_URL] ?: defaults.baseUrl
-        AppSettings(
+        return AppSettings(
             piProviderId = preferences[PI_PROVIDER_ID]
                 ?.takeIf(String::isNotBlank)
                 ?: inferPiProviderIdFromBaseUrl(storedBaseUrl),
