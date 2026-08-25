@@ -62,6 +62,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -174,6 +175,7 @@ import com.highsockscapital.sunshine.platform.PlatformWebView
 import com.highsockscapital.sunshine.ui.theme.SunshineBackground
 import com.highsockscapital.sunshine.ui.theme.SunshineBackgroundGradientTop
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
+import com.highsockscapital.sunshine.ui.theme.SunshineOutline
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
 import com.highsockscapital.sunshine.ui.theme.SunshinePrimary
 import com.highsockscapital.sunshine.ui.theme.SunshineScrim
@@ -1066,7 +1068,7 @@ private fun ConversationModelSelector(
                         },
                         modifier = Modifier
                             .width(menuWidth)
-                            .shadow(14.dp, RoundedCornerShape(22.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                            .border(1.dp, SunshineOutline, RoundedCornerShape(22.dp))
                             .clip(RoundedCornerShape(22.dp))
                             .background(SunshineSurface)
                             .padding(vertical = 5.dp),
@@ -2124,7 +2126,7 @@ private fun PendingSessionInputBubble(
         Column(
             modifier = Modifier
                 .widthIn(max = 300.dp)
-                .shadow(8.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
                 .clip(RoundedCornerShape(24.dp))
                 .background(SunshineSurfaceHigh.copy(alpha = 0.96f))
                 .padding(horizontal = 18.dp, vertical = 14.dp),
@@ -2456,11 +2458,6 @@ private fun ConversationComposerBar(
         animationSpec = tween(durationMillis = 260, easing = ChatGptMotionEasing),
         label = "composer_field_min_height",
     )
-    val plusShadowElevation by animateDpAsState(
-        targetValue = if (plusSeparated) 10.dp else 0.dp,
-        animationSpec = tween(durationMillis = 260, easing = ChatGptMotionEasing),
-        label = "composer_plus_shadow",
-    )
 
     Column(
         modifier = modifier
@@ -2715,7 +2712,7 @@ private fun ConversationComposerBar(
                                             Column(
                                                 modifier = Modifier
                                                     .widthIn(min = 252.dp, max = 284.dp)
-                                                    .shadow(20.dp, RoundedCornerShape(30.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                                                    .border(1.dp, SunshineOutline, RoundedCornerShape(30.dp))
                                                     .clip(RoundedCornerShape(30.dp))
                                                     .background(SunshineSurface)
                                                     .padding(horizontal = 12.dp, vertical = 12.dp),
@@ -2757,7 +2754,7 @@ private fun ConversationComposerBar(
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .shadow(plusShadowElevation, CircleShape, ambientColor = ChatGptControlShadow, spotColor = ChatGptControlShadow)
+                        .border(width = if (plusSeparated) 1.dp else 0.dp, color = SunshineOutline, shape = CircleShape)
                         .clip(CircleShape)
                         .background(if (plusSeparated) SunshineSurface else Color.Transparent)
                         .clickable(onClick = { attachmentMenuExpanded = !attachmentMenuExpanded }),
@@ -2802,7 +2799,7 @@ private fun ConversationComposerBar(
                             Box(
                                 modifier = Modifier
                                     .widthIn(min = 284.dp, max = 304.dp)
-                                    .shadow(20.dp, RoundedCornerShape(30.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                                    .border(1.dp, SunshineOutline, RoundedCornerShape(30.dp))
                                     .clip(RoundedCornerShape(30.dp))
                                     .background(SunshineSurface),
                             ) {
@@ -3068,7 +3065,7 @@ private fun AgentModePreviewPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .background(SunshineSurface)
             .padding(14.dp),
@@ -3309,7 +3306,7 @@ private fun AgentModeCursorTextBubble(
     Box(
         modifier = modifier
             .widthIn(max = 320.dp)
-            .shadow(18.dp, RoundedCornerShape(12.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .background(SunshineSurface)
             .padding(horizontal = 14.dp, vertical = 12.dp),

@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -79,6 +80,7 @@ import com.highsockscapital.sunshine.shared.resources.search_no_chats_match
 import com.highsockscapital.sunshine.shared.resources.settings_title
 import com.highsockscapital.sunshine.shared.resources.chat_no_conversations_yet
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
+import com.highsockscapital.sunshine.ui.theme.SunshineOutline
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
 import com.highsockscapital.sunshine.ui.theme.SunshineBackground
 import com.highsockscapital.sunshine.ui.theme.SunshineScrim
@@ -294,7 +296,7 @@ fun SunshineConversationDrawer(
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
                     .padding(end = 18.dp, bottom = 18.dp)
-                    .shadow(18.dp, RoundedCornerShape(999.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                    .border(1.dp, SunshineOutline, RoundedCornerShape(999.dp))
                     .clip(RoundedCornerShape(999.dp))
                     .background(SunshinePrimary)
                     .clickable {
@@ -320,7 +322,7 @@ fun SunshineConversationDrawer(
 private fun SharedDrawerSearchField(value: String, onValueChange: (String) -> Unit) {
     Row(
         modifier = Modifier
-            .shadow(12.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .background(SunshineSurface)
             .padding(horizontal = 14.dp, vertical = 11.dp),
@@ -502,7 +504,7 @@ private fun SharedDrawerActionMenu(
             Column(
                 modifier = Modifier
                     .widthIn(min = 188.dp, max = 220.dp)
-                    .shadow(18.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                    .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
                     .clip(RoundedCornerShape(24.dp))
                     .background(SunshineSurface)
                     .padding(8.dp),

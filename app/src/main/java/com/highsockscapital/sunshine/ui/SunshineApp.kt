@@ -46,6 +46,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
@@ -141,6 +142,7 @@ import com.highsockscapital.sunshine.termux.TermuxSetupIssue
 import com.highsockscapital.sunshine.termux.TermuxSetupState
 import com.highsockscapital.sunshine.ui.theme.SunshineBackground
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
+import com.highsockscapital.sunshine.ui.theme.SunshineOutline
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
 import com.highsockscapital.sunshine.ui.theme.SunshinePrimary
 import com.highsockscapital.sunshine.ui.theme.SunshineScrim
@@ -2154,7 +2156,7 @@ private fun SurfaceIconButton(
     Box(
         modifier = Modifier
             .size(44.dp)
-            .shadow(12.dp, CircleShape, ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, CircleShape)
             .clip(CircleShape)
             .background(SunshineSurface.copy(alpha = 0.88f))
             .clickable(onClick = onClick),

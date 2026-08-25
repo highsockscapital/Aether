@@ -40,6 +40,7 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -200,6 +201,7 @@ import com.highsockscapital.sunshine.runtime.AlpineTerminalLaunchSpec
 import com.highsockscapital.sunshine.runtime.AndroidAlpineFileManagerRuntime
 import com.highsockscapital.sunshine.termux.TermuxSetupState
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
+import com.highsockscapital.sunshine.ui.theme.SunshineOutline
 import com.highsockscapital.sunshine.ui.theme.SunshineOnPrimary
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
 import com.highsockscapital.sunshine.ui.theme.SunshinePrimary
@@ -4999,7 +5001,7 @@ private fun PiPackageInstallWarningDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 18.dp)
-                .shadow(22.dp, RoundedCornerShape(28.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                .border(1.dp, SunshineOutline, RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
                 .background(SunshineSurfaceHigh)
                 .padding(20.dp),
@@ -6713,7 +6715,7 @@ private fun RootSetupAlreadyConfiguredDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 18.dp)
-                .shadow(22.dp, RoundedCornerShape(28.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                .border(1.dp, SunshineOutline, RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
                 .background(SunshineSurfaceHigh)
                 .padding(20.dp),
@@ -7763,7 +7765,7 @@ private fun SettingsCircleButton(
     Box(
         modifier = modifier
             .size(44.dp)
-            .shadow(10.dp, RoundedCornerShape(50), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(50))
             .clip(RoundedCornerShape(50))
             .background(if (enabled) SunshineSurface else SunshineSurface.copy(alpha = 0.55f))
             .clickable(enabled = enabled, onClick = onClick),

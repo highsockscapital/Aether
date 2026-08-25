@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
+import com.highsockscapital.sunshine.ui.theme.SunshineOutline
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
 import com.highsockscapital.sunshine.platform.LocalReduceMotion
 import com.highsockscapital.sunshine.ui.theme.SunshineSurface
@@ -214,12 +216,7 @@ private fun ConversationStarterChip(
 ) {
     Row(
         modifier = Modifier
-            .shadow(
-                6.dp,
-                RoundedCornerShape(999.dp),
-                ambientColor = ConversationControlShadow,
-                spotColor = ConversationControlShadow,
-            )
+            .border(1.dp, SunshineOutline, RoundedCornerShape(999.dp))
             .clip(RoundedCornerShape(999.dp))
             .background(SunshineSurface.copy(alpha = 0.98f))
             .clickable(onClick = onClick)
