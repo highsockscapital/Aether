@@ -28,40 +28,33 @@ class ProviderConfigFormTest {
     @Test
     fun applyProviderDefaultsHonorsDefinitionAuthCapabilities() {
         // Definitions that only offer ambient authentication default to it.
-        val cloudDefinition = PiProviderDefinition(
-            id = "test-cloud",
-            displayName = "Test Cloud",
-            defaultBaseUrl = "",
-            defaultModelId = "",
-            supportsApiKey = true,
-            supportsInteractiveApiKey = false,
-            supportsAmbientAuth = true,
-        )
         val cloudState = ProviderFormState.fromConfig(null)
-        cloudState.applyProviderDefaults(cloudDefinition)
+        cloudState.applyProviderDefaults(
+            PiProviderDefinition(
+                id = "test-cloud",
+                displayName = "Test Cloud",
+                defaultBaseUrl = "",
+                defaultModelId = "",
+                supportsApiKey = true,
+                supportsInteractiveApiKey = false,
+                supportsAmbientAuth = true,
+            )
+        )
         assertEquals(ProviderAuthMethod.Ambient, cloudState.authMethod)
 
-        // Key-based definitions with an optional base URL keep it blank and
-        // still accept an API key. Configured-ness of unknown ids against the
-        // catalog is covered by OnboardingLogicTest.
-        val gatewayDefinition = PiProviderDefinition(
-            id = "cloudflare-ai-gateway",
-            displayName = "Cloudflare AI Gateway",
-            defaultBaseUrl = "",
-            defaultModelId = "",
-            requiresBaseUrl = false,
-        )
-        val gatewayState = ProviderFormState.fromConfig(null)
-        gatewayState.applyProviderDefaults(gatewayDefinition)
-        gatewayState.apiKey = "test-key"
+        // The custom endpoint definition requires a base URL and fills in its
+        // default; API keys pass through unchanged.
+        val customState = ProviderFormState.fromConfig(null)
+        customState.applyProviderDefaults(PiProviderCatalog.resolve("openai-compatible"))
+        assertTrue(customState.selectedDefinition.requiresBaseUrl)
+        assertEquals("https://api.openai.com/v1", customState.baseUrl)
 
-        assertFalse(gatewayState.selectedDefinition.requiresBaseUrl)
-        assertEquals("", gatewayState.baseUrl)
-        val config = gatewayState.buildConfig()
+        customState.apiKey = "test-key"
+        val config = customState.buildConfig()
+        assertEquals("openai-compatible", config.piProviderId)
         assertEquals("test-key", config.apiKey)
-        assertEquals("", config.baseUrl)
+        assertEquals("https://api.openai.com/v1", config.baseUrl)
     }
-
     @Test
     fun ensureAvailableProviderIdUsesNextUnusedSuffix() {
         val state = ProviderFormState.fromConfig(null)
