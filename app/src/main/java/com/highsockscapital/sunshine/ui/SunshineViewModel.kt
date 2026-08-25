@@ -114,6 +114,7 @@ import com.highsockscapital.sunshine.runtime.LocalRuntimeSetupState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -612,11 +613,17 @@ class SunshineViewModel(
 
     private suspend fun rememberTermuxSetupCompleted(setupState: TermuxSetupState): TermuxSetupState {
         val settings = _uiState.value.settings
-        if (setupState.isReady && !settings.termuxSetupCompleted) {
-            settingsRepository.updateSettings(settings.withRuntimeEnabled(LocalRuntimeId.Termux))
+        // Read the stored flag directly instead of relying on UI state, which can
+        // still hold defaults before the first settings emission. Writing the full
+        // settings object from defaults here would wipe persisted values such as
+        // the custom system prompt.
+        val storedTermuxSetupCompleted = settingsRepository.isTermuxSetupCompleted()
+        if (setupState.isReady && !storedTermuxSetupCompleted) {
+            settingsRepository.markTermuxSetupCompleted()
         }
         return setupState.copy(
             previouslyConfigured = setupState.previouslyConfigured ||
+                storedTermuxSetupCompleted ||
                 settings.termuxSetupCompleted ||
                 setupState.isReady,
         )
@@ -2499,6 +2506,9 @@ class SunshineViewModel(
                 preferredModelKey = resolvedDefaultChatModelKey,
                 fallbackModelKey = resolvedDefaultChatModelKey,
             )
+            // NonCancellable: closing the app can tear down the ViewModel and
+            // cancel this coroutine before DataStore persists anything.
+            withContext(NonCancellable) {
             settingsRepository.updateSettings(
                 currentState.settings.copy(
                     piProviderId = selectedModelSettings.piProviderId,
@@ -2539,6 +2549,7 @@ class SunshineViewModel(
                     autoCompactThresholdPercent = autoCompactThresholdPercent.coerceIn(50, 95),
                 )
             )
+            }
         }
     }
 
@@ -2555,12 +2566,14 @@ class SunshineViewModel(
                         apiKeyOverride = config.apiKeyOverride.trim(),
                     )
                 }
-            settingsRepository.updateSettings(
-                _uiState.value.settings.copy(
-                    subagentsSharedOpenRouterApiKey = sharedOpenRouterApiKey.trim(),
-                    subagentConfigs = normalizedConfigs,
+            withContext(NonCancellable) {
+                settingsRepository.updateSettings(
+                    _uiState.value.settings.copy(
+                        subagentsSharedOpenRouterApiKey = sharedOpenRouterApiKey.trim(),
+                        subagentConfigs = normalizedConfigs,
+                    )
                 )
-            )
+            }
         }
     }
 

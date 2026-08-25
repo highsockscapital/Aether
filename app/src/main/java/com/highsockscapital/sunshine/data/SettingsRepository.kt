@@ -84,6 +84,10 @@ class SettingsRepository(
             userAgent = normalizeLlmUserAgent(preferences[USER_AGENT]),
             reasoningEffort = normalizeReasoningEffort(preferences[REASONING_EFFORT]),
             systemPrompt = preferences[SYSTEM_PROMPT] ?: defaults.systemPrompt,
+            tavilyApiKey = preferences[TAVILY_API_KEY].orEmpty(),
+            tavilyBaseUrl = normalizeTavilyBaseUrl(
+                preferences[TAVILY_BASE_URL] ?: defaults.tavilyBaseUrl,
+            ),
             llmInactivityReconnectTimeoutSeconds = normalizeLlmInactivityReconnectTimeoutSeconds(
                 preferences[LLM_INACTIVITY_RECONNECT_TIMEOUT_SECONDS]
             ),
@@ -274,6 +278,8 @@ class SettingsRepository(
             it[USER_AGENT] = normalizeLlmUserAgent(settings.userAgent)
             it[REASONING_EFFORT] = normalizeReasoningEffort(settings.reasoningEffort)
             it[SYSTEM_PROMPT] = settings.systemPrompt
+            it[TAVILY_API_KEY] = settings.tavilyApiKey
+            it[TAVILY_BASE_URL] = normalizeTavilyBaseUrl(settings.tavilyBaseUrl)
             it[LLM_INACTIVITY_RECONNECT_TIMEOUT_SECONDS] =
                 normalizeLlmInactivityReconnectTimeoutSeconds(
                     settings.llmInactivityReconnectTimeoutSeconds
@@ -335,6 +341,23 @@ class SettingsRepository(
         context.dataStore.edit { it[SYSTEM_PROMPT] = value }
     }
 
+    suspend fun isTermuxSetupCompleted(): Boolean =
+        context.dataStore.data.first()[TERMUX_SETUP_COMPLETED] ?: false
+
+    /**
+     * Persists only the Termux completion flag and enabled runtimes. A full
+     * settings-object write is unsafe before the settings flow has emitted,
+     * because it would overwrite every stored key with defaults.
+     */
+    suspend fun markTermuxSetupCompleted() {
+        context.dataStore.edit { prefs ->
+            prefs[TERMUX_SETUP_COMPLETED] = true
+            val enabled =
+                parseRuntimeIds(prefs[ENABLED_RUNTIME_IDS].orEmpty()) + LocalRuntimeId.Termux
+            prefs[ENABLED_RUNTIME_IDS] = serializeRuntimeIds(enabled)
+        }
+    }
+
     suspend fun updateLanguage(language: AppLanguage) {
         context.dataStore.edit { it[LANGUAGE] = language.storageValue }
     }
@@ -358,6 +381,8 @@ class SettingsRepository(
             it[USER_AGENT] = normalizeLlmUserAgent(settings.userAgent)
             it[REASONING_EFFORT] = normalizeReasoningEffort(settings.reasoningEffort)
             it[SYSTEM_PROMPT] = settings.systemPrompt
+            it[TAVILY_API_KEY] = settings.tavilyApiKey
+            it[TAVILY_BASE_URL] = normalizeTavilyBaseUrl(settings.tavilyBaseUrl)
             it[LLM_INACTIVITY_RECONNECT_TIMEOUT_SECONDS] =
                 normalizeLlmInactivityReconnectTimeoutSeconds(
                     settings.llmInactivityReconnectTimeoutSeconds
@@ -447,6 +472,8 @@ class SettingsRepository(
         val USER_AGENT = stringPreferencesKey("user_agent")
         val REASONING_EFFORT = stringPreferencesKey("reasoning_effort")
         val SYSTEM_PROMPT = stringPreferencesKey("system_prompt")
+        val TAVILY_API_KEY = stringPreferencesKey("tavily_api_key")
+        val TAVILY_BASE_URL = stringPreferencesKey("tavily_base_url")
         val LLM_INACTIVITY_RECONNECT_TIMEOUT_SECONDS =
             intPreferencesKey("llm_inactivity_reconnect_timeout_seconds")
         val KEEP_TASKS_RUNNING_IN_BACKGROUND =

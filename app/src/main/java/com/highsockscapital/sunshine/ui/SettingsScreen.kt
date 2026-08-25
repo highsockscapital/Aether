@@ -711,6 +711,14 @@ fun SettingsScreen(
         persistSettings()
     }
 
+    // Persist shortly after the system prompt stops changing so a custom prompt
+    // survives an app close or window switch even if ON_STOP persistence is
+    // interrupted before DataStore commits the write.
+    LaunchedEffect(systemPromptValue.text) {
+        delay(600)
+        persistSettings()
+    }
+
     // Local page navigation
     var currentPage by rememberSaveable { mutableStateOf(SettingsPage.Hub.name) }
     val page = SettingsPage.valueOf(currentPage)
