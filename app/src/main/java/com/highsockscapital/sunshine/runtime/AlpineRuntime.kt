@@ -1330,8 +1330,14 @@ class AlpineRuntime(
             workspaceHostDir: File,
             rootfsDir: File,
         ): File? {
-            val normalized = java.nio.file.Paths.get(guestPath.trim()
-                .ifBlank { workspaceRoot }).normalize().toString()
+            val expanded = when {
+                guestPath.isBlank() -> workspaceRoot
+                guestPath == "~" -> homeDirectory
+                guestPath.startsWith("~/") -> homeDirectory + guestPath.removePrefix("~")
+                guestPath.startsWith("/") -> guestPath
+                else -> "$workspaceRoot/${guestPath.trim('/')}"
+            }
+            val normalized = java.nio.file.Paths.get(expanded).normalize().toString()
             return when {
                 normalized == workspaceRoot || normalized.startsWith("$workspaceRoot/") -> {
                     val relative = normalized.removePrefix(workspaceRoot).trimStart('/')

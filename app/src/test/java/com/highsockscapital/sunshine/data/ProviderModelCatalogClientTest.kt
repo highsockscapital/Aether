@@ -7,6 +7,13 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+private fun definition(id: String) = PiProviderDefinition(
+    id = id,
+    displayName = id,
+    defaultBaseUrl = "",
+    defaultModelId = "",
+)
+
 class ProviderModelCatalogClientTest {
     @Test
     fun thinkingCatalogKeyUsesOnlyLastModelIdSegment() {
@@ -118,13 +125,20 @@ class ProviderModelCatalogClientTest {
 
     @Test
     fun modelsDevProviderAliasesMatchSunshineBuiltIns() {
+        // Alias mapping applies by id, independent of catalog membership.
+        fun definition(id: String) = PiProviderDefinition(
+            id = id,
+            displayName = id,
+            defaultBaseUrl = "",
+            defaultModelId = "",
+        )
         assertEquals(
             listOf("fireworks-ai"),
-            PiProviderCatalog.resolve("fireworks").modelsDevProviderIds(),
+            definition("fireworks").modelsDevProviderIds(),
         )
         assertEquals(
             listOf("kimi-for-coding"),
-            PiProviderCatalog.resolve("kimi-coding").modelsDevProviderIds(),
+            definition("kimi-coding").modelsDevProviderIds(),
         )
     }
 
@@ -169,16 +183,16 @@ class ProviderModelCatalogClientTest {
         server.enqueue(
             MockResponse()
                 .addHeader("Content-Type", "application/json")
-                .setBody("""{"providers":{"openai":{"models":{"gpt-fallback":{"id":"gpt-fallback"}}}}}""")
+                .setBody("""{"providers":{"openrouter":{"models":{"router-fallback":{"id":"router-fallback"}}}}}""")
         )
         server.start()
 
         try {
             val result = ProviderModelCatalogClient.fetchModels(
                 LlmProviderConfig(
-                    providerId = "openai",
-                    name = "OpenAI",
-                    piProviderId = "openai",
+                    providerId = "openrouter",
+                    name = "OpenRouter",
+                    piProviderId = "openrouter",
                     apiKey = "invalid-key",
                     baseUrl = server.url("/v1").toString(),
                     modelId = "",
@@ -187,7 +201,7 @@ class ProviderModelCatalogClientTest {
                 modelsDevUrl = server.url("/catalog.json").toString(),
             )
 
-            assertEquals(listOf("gpt-fallback"), result.models)
+            assertEquals(listOf("router-fallback"), result.models)
             assertEquals(null, result.error)
             assertEquals("/v1/models", server.takeRequest().path)
             assertEquals("/catalog.json", server.takeRequest().path)

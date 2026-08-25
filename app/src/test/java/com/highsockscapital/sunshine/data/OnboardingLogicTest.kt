@@ -41,7 +41,28 @@ class OnboardingLogicTest {
 
     @Test
     fun providerValidationUsesPiAuthenticationCapabilities() {
+        // Built-in providers validate key requirements against the catalog.
         assertFalse(
+            AppSettings(
+                piProviderId = "openrouter",
+                providerAuthMethod = ProviderAuthMethod.ApiKey,
+                apiKey = "",
+                baseUrl = "https://openrouter.ai/api/v1",
+                modelId = "openai/gpt-5.4",
+            ).isProviderSetupValid()
+        )
+        assertTrue(
+            AppSettings(
+                piProviderId = "openrouter",
+                providerAuthMethod = ProviderAuthMethod.ApiKey,
+                apiKey = "sk-test",
+                baseUrl = "https://openrouter.ai/api/v1",
+                modelId = "openai/gpt-5.4",
+            ).isProviderSetupValid()
+        )
+        // Unknown ids resolve to the custom endpoint fallback: a base URL is
+        // required, but any key is accepted.
+        assertTrue(
             AppSettings(
                 piProviderId = "openai",
                 providerAuthMethod = ProviderAuthMethod.ApiKey,
@@ -59,7 +80,8 @@ class OnboardingLogicTest {
                 modelId = "gpt-5.3-codex-spark",
             ).isProviderSetupValid()
         )
-        assertTrue(
+        // No catalog definition currently declares ambient support.
+        assertFalse(
             AppSettings(
                 piProviderId = "google-vertex",
                 providerAuthMethod = ProviderAuthMethod.Ambient,

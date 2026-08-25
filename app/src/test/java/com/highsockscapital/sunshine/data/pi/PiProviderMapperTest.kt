@@ -16,26 +16,26 @@ import org.junit.Test
 
 class PiProviderMapperTest {
     @Test
-    fun builtInOpenAiMapsDirectlyToPiCatalog() {
+    fun builtInOpenRouterMapsDirectlyToPiCatalog() {
         val config = AppSettings(
-            providerConfigId = "openai-config",
-            piProviderId = "openai",
+            providerConfigId = "openrouter-config",
+            piProviderId = "openrouter",
             apiKey = "sk-test",
-            baseUrl = "https://api.openai.com/v1",
-            modelId = "gpt-5.4",
+            baseUrl = "https://openrouter.ai/api/v1",
+            modelId = "openai/gpt-5.4",
         ).toPiModelConfig()
 
         assertEquals("builtin", config.providerType)
-        assertEquals("openai-config", config.providerConfigId)
-        assertEquals("openai-config", config.toJson().getString("provider_config_id"))
-        assertEquals("openai", config.piProviderId)
+        assertEquals("openrouter-config", config.providerConfigId)
+        assertEquals("openrouter-config", config.toJson().getString("provider_config_id"))
+        assertEquals("openrouter", config.piProviderId)
         assertEquals("builtin", config.piApi)
-        assertEquals("gpt-5.4", config.modelId)
+        assertEquals("openai/gpt-5.4", config.modelId)
         assertEquals("sk-test", config.apiKey)
         assertFalse(config.reasoning)
         assertEquals("high", AppSettings(
-            piProviderId = "openai",
-            modelId = "gpt-5.4",
+            piProviderId = "openrouter",
+            modelId = "openai/gpt-5.4",
             reasoningEffort = "high",
         ).toPiThinkingLevel())
     }
@@ -86,7 +86,9 @@ class PiProviderMapperTest {
     }
 
     @Test
-    fun anthropicMapsToBuiltInPiProvider() {
+    fun legacyProviderIdsFallBackToCustomEndpointMapping() {
+        // openai/anthropic/google-vertex were removed from the catalog; ids
+        // that no longer resolve map through the custom endpoint provider.
         val config = AppSettings(
             piProviderId = "anthropic",
             apiKey = "anthropic-key",
@@ -94,14 +96,11 @@ class PiProviderMapperTest {
             modelId = "claude-sonnet-4-5",
         ).toPiModelConfig()
 
-        assertEquals("builtin", config.providerType)
-        assertEquals("anthropic", config.piProviderId)
-        assertEquals("builtin", config.piApi)
-    }
+        assertEquals("custom", config.providerType)
+        assertTrue(config.piProviderId.startsWith("sunshine-"))
+        assertEquals("openai-completions", config.piApi)
 
-    @Test
-    fun vertexMapsToPiGoogleVertex() {
-        val config = AppSettings(
+        val vertex = AppSettings(
             piProviderId = "google-vertex",
             apiKey = "vertex-key",
             baseUrl = "https://aiplatform.googleapis.com/v1",
@@ -109,11 +108,9 @@ class PiProviderMapperTest {
             providerAuthMethod = ProviderAuthMethod.ApiKey,
         ).toPiModelConfig()
 
-        assertEquals("builtin", config.providerType)
-        assertEquals("google-vertex", config.piProviderId)
-        assertEquals("builtin", config.piApi)
-        assertEquals("vertex-key", config.apiKey)
-        assertEquals(ProviderAuthMethod.ApiKey, config.authMethod)
+        assertEquals("custom", vertex.providerType)
+        assertEquals("vertex-key", vertex.apiKey)
+        assertEquals(ProviderAuthMethod.ApiKey, vertex.authMethod)
     }
 
     @Test

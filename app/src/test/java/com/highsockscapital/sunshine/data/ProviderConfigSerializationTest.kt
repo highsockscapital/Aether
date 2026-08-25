@@ -49,18 +49,22 @@ class ProviderConfigSerializationTest {
             ).toString()
         )
 
+        // The legacy type maps to a pi id that is no longer a built-in, so
+        // backfill comes from the custom endpoint fallback definition.
         val config = configs.single()
         assertEquals("anthropic", config.piProviderId)
-        assertEquals("Anthropic", config.name)
-        assertEquals("https://api.anthropic.com", config.baseUrl)
+        assertEquals("OpenAI-compatible endpoint", config.name)
+        assertEquals("https://api.openai.com/v1", config.baseUrl)
 
         val option = configs.availableModelOptions().single()
-        assertEquals("https://api.anthropic.com", option.baseUrl)
+        assertEquals("https://api.openai.com/v1", option.baseUrl)
         assertEquals("claude-test", option.modelId)
     }
 
     @Test
     fun importedCloudProviderConfigsDefaultToAmbientAuthentication() {
+        // Cloud providers left the catalog; their legacy ids fall back to the
+        // custom endpoint definition, which defaults to ApiKey auth.
         listOf("google-vertex", "amazon-bedrock").forEach { providerId ->
             val config = parseProviderConfigs(
                 JSONArray().put(
@@ -70,7 +74,7 @@ class ProviderConfigSerializationTest {
                 ).toString()
             ).single()
 
-            assertEquals(ProviderAuthMethod.Ambient, config.authMethod)
+            assertEquals(ProviderAuthMethod.ApiKey, config.authMethod)
         }
     }
 
