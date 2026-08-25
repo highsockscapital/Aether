@@ -180,9 +180,11 @@ object AgentFrontmatter {
  */
 class SubagentManager(
     private val homeDirectory: String,
+    private val globalAgentsDirectoryOverride: File? = null,
 ) {
 
-    fun globalAgentsDirectory(): File = File(homeDirectory, ".pi/agent/agents")
+    fun globalAgentsDirectory(): File =
+        globalAgentsDirectoryOverride ?: File(homeDirectory, ".pi/agent/agents")
 
     fun listAgents(workspaceAgentsDirectory: File?): List<AgentFileInfo> {
         val dirs = buildList {

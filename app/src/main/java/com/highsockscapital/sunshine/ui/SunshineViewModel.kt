@@ -33,6 +33,7 @@ import com.highsockscapital.sunshine.data.PiDiscoveredSkillSource
 import com.highsockscapital.sunshine.data.ProviderModelCatalogClient
 import com.highsockscapital.sunshine.data.thinkingCatalogKey
 import com.highsockscapital.sunshine.data.LlmProviderConfig
+import com.highsockscapital.sunshine.data.PiProviderCatalog
 import com.highsockscapital.sunshine.data.LlmTokenUsage
 import com.highsockscapital.sunshine.data.ModelCatalogClient
 import com.highsockscapital.sunshine.data.LocalRuntimeId
@@ -59,6 +60,8 @@ import com.highsockscapital.sunshine.data.TermuxEnvironmentVariable
 import com.highsockscapital.sunshine.data.normalizeTermuxEnvironmentVariables
 import com.highsockscapital.sunshine.data.normalizeAlpineEnvironmentVariables
 import com.highsockscapital.sunshine.data.SessionFollowUpMode
+import com.highsockscapital.sunshine.data.SubagentManager
+import com.highsockscapital.sunshine.data.SubagentConfig
 import com.highsockscapital.sunshine.data.SessionExecutionState
 import com.highsockscapital.sunshine.data.SessionTurnEvent
 import com.highsockscapital.sunshine.data.SessionTurnOutcome
@@ -76,6 +79,7 @@ import com.highsockscapital.sunshine.data.withExplicitDefaultChatModel
 import com.highsockscapital.sunshine.data.LlmMessage
 import com.highsockscapital.sunshine.data.LlmTextPart
 import com.highsockscapital.sunshine.data.ProviderAuthMethod
+import com.highsockscapital.sunshine.data.pi.BuiltInAgentsGuestDirectory
 import com.highsockscapital.sunshine.data.pi.PiCompletionClient
 import com.highsockscapital.sunshine.data.pi.PiKernelBridge
 import com.highsockscapital.sunshine.data.pi.PiCoreSetupActivity
@@ -211,6 +215,8 @@ class SunshineViewModel(
     val uiState: StateFlow<SunshineUiState> = _uiState.asStateFlow()
     val transientMessages = _transientMessages.asSharedFlow()
 
+    private var lastSyncedSubagentSignature: String? = null
+
     init {
         registerCoreModServices()
         refreshTermuxSetup()
@@ -222,6 +228,16 @@ class SunshineViewModel(
             settingsRepository.settings.collect { settings ->
                 if (settings.privacyPolicyAccepted) {
                     runtime.initializePostHog()
+                }
+                val subagentSignature = settings.subagentsSharedOpenRouterApiKey + "|" +
+                    settings.subagentConfigs.entries
+                        .sortedBy { it.key }
+                        .joinToString(",") { (name, config) ->
+                            name + ":" + config.enabled + ":" + config.modelId + ":" + config.apiKeyOverride
+                        }
+                if (subagentSignature != lastSyncedSubagentSignature) {
+                    lastSyncedSubagentSignature = subagentSignature
+                    syncBuiltInSubagents(settings.subagentConfigs)
                 }
                 _uiState.update { current ->
                     if (!current.isStartupRouteResolved) {
@@ -2523,6 +2539,65 @@ class SunshineViewModel(
                     autoCompactThresholdPercent = autoCompactThresholdPercent.coerceIn(50, 95),
                 )
             )
+        }
+    }
+
+    fun saveSubagentSettings(
+        sharedOpenRouterApiKey: String,
+        configs: Map<String, SubagentConfig>,
+    ) {
+        viewModelScope.launch {
+            val normalizedConfigs = configs
+                .mapKeys { it.key.trim() }
+                .mapValues { (_, config) ->
+                    config.copy(
+                        modelId = config.modelId.trim(),
+                        apiKeyOverride = config.apiKeyOverride.trim(),
+                    )
+                }
+            settingsRepository.updateSettings(
+                _uiState.value.settings.copy(
+                    subagentsSharedOpenRouterApiKey = sharedOpenRouterApiKey.trim(),
+                    subagentConfigs = normalizedConfigs,
+                )
+            )
+        }
+    }
+
+    fun fetchSubagentModels(
+        openRouterApiKey: String,
+        onComplete: (List<String>) -> Unit,
+    ) {
+        _uiState.update { it.copy(isFetchingModels = true) }
+        viewModelScope.launch {
+            val result = ProviderModelCatalogClient.fetchModels(
+                LlmProviderConfig(
+                    providerId = "openrouter",
+                    name = "OpenRouter",
+                    piProviderId = "openrouter",
+                    apiKey = openRouterApiKey.trim(),
+                    baseUrl = PiProviderCatalog.resolve("openrouter").defaultBaseUrl,
+                    modelId = "",
+                    manualModelIds = emptyList(),
+                ),
+            )
+            _uiState.update { it.copy(isFetchingModels = false) }
+            onComplete(result.models)
+        }
+    }
+
+    /** Writes built-in agent files into the pi global agents directory. */
+    private fun syncBuiltInSubagents(configs: Map<String, SubagentConfig>) {
+        viewModelScope.launch {
+            runCatching {
+                val agentsDirectory = runtime.alpineRuntime.resolveGuestPath(BuiltInAgentsGuestDirectory)
+                SubagentManager(
+                    homeDirectory = "",
+                    globalAgentsDirectoryOverride = agentsDirectory,
+                ).syncBuiltIns(configs)
+            }.onFailure { throwable ->
+                diagnosticLogger.exception(throwable)
+            }
         }
     }
 

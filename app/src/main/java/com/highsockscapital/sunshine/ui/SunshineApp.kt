@@ -1080,6 +1080,8 @@ private fun SunshineAppContent(
                     defaultCompactingModelKey = uiState.settings.defaultCompactingModelKey,
                     autoCompactEnabled = uiState.settings.autoCompactEnabled,
                     autoCompactThresholdPercent = uiState.settings.autoCompactThresholdPercent,
+                    subagentsSharedOpenRouterApiKey = uiState.settings.subagentsSharedOpenRouterApiKey,
+                    subagentConfigs = uiState.settings.subagentConfigs,
                     agentModeDisplayState = uiState.agentModeDisplayState,
                     providerConfigs = uiState.providerConfigs,
                     usageStatisticsSnapshots = uiState.usageStatisticsSnapshots,
@@ -1109,6 +1111,8 @@ private fun SunshineAppContent(
                     providerAuthState = uiState.providerAuthState,
                     appUpdate = uiState.appUpdate,
                     onSave = viewModel::saveSettings,
+                    onSaveSubagentSettings = viewModel::saveSubagentSettings,
+                    onFetchSubagentModels = viewModel::fetchSubagentModels,
                     onUpdateLanguage = { language ->
                         viewModel.updateAppLanguage(language)
                         SunshineLocaleManager.apply(language)

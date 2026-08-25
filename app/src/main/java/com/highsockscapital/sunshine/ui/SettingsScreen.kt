@@ -65,6 +65,12 @@ import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.SmartToy
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material.icons.rounded.Public
@@ -139,6 +145,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.math.roundToInt
+import com.highsockscapital.sunshine.data.BuiltInSubagents
+import com.highsockscapital.sunshine.data.SubagentConfig
 import com.highsockscapital.sunshine.data.SunshineAppExtensionError
 import com.highsockscapital.sunshine.data.AgentModeAuthorizationIssue
 import com.highsockscapital.sunshine.data.AgentModeAuthorizationMethod
@@ -214,6 +222,7 @@ private enum class SettingsPage {
     DefaultTitleModel,
     DefaultNamingModel,
     DefaultCompactingModel,
+    Subagents,
     AddProvider,
     EditProvider,
     Personalization,
@@ -250,6 +259,7 @@ private fun SettingsPage.depth(): Int = when (this) {
     SettingsPage.Hub -> 0
     SettingsPage.General,
     SettingsPage.Providers,
+    SettingsPage.Subagents,
     SettingsPage.Personalization,
     SettingsPage.WebTools,
     SettingsPage.Reliability,
@@ -440,6 +450,8 @@ fun SettingsScreen(
     defaultCompactingModelKey: String,
     autoCompactEnabled: Boolean,
     autoCompactThresholdPercent: Int,
+    subagentsSharedOpenRouterApiKey: String,
+    subagentConfigs: Map<String, SubagentConfig>,
     agentModeDisplayState: AgentModeDisplayState,
     providerConfigs: List<LlmProviderConfig>,
     usageStatisticsSnapshots: List<ChatUsageStatisticsSnapshot>,
@@ -490,6 +502,8 @@ fun SettingsScreen(
         Boolean,
         Int,
     ) -> Unit,
+    onSaveSubagentSettings: (String, Map<String, SubagentConfig>) -> Unit,
+    onFetchSubagentModels: (String, (List<String>) -> Unit) -> Unit,
     onUpdateLanguage: (AppLanguage) -> Unit,
     onUpdateThemeMode: (AppThemeMode) -> Unit,
     onUpsertProviderConfig: (LlmProviderConfig) -> Unit,
@@ -623,6 +637,10 @@ fun SettingsScreen(
     var autoCompactThresholdPercentValue by rememberSaveable {
         mutableStateOf(autoCompactThresholdPercent.coerceIn(50, 95))
     }
+    var subagentsSharedKeyValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(subagentsSharedOpenRouterApiKey))
+    }
+    var subagentDrafts by remember { mutableStateOf(subagentConfigs) }
 
     val enabledModelOptions = remember(providerConfigs) { providerConfigs.availableModelOptions() }
 
@@ -670,6 +688,7 @@ fun SettingsScreen(
             autoCompactEnabledValue,
             autoCompactThresholdPercentValue,
         )
+        onSaveSubagentSettings(subagentsSharedKeyValue.text, subagentDrafts)
     }
 
     fun persistAndExit() {
@@ -825,6 +844,12 @@ fun SettingsScreen(
                     currentPage = SettingsPage.ExtensionSettings.name
                 },
                 mcpServerCount = mcpServers.size,
+                subagentsSummary = run {
+                    val enabledCount = BuiltInSubagents.all.count { definition ->
+                        subagentDrafts[definition.name]?.enabled ?: true
+                    }
+                    stringResource(R.string.settings_subagents_summary, enabledCount, BuiltInSubagents.all.size)
+                },
                 scheduledTaskCount = scheduledTasks.size,
                 statisticsSummary = buildSettingsStatisticsSummary(usageStatisticsSnapshots),
                 onReplayOnboarding = ::persistAndReplayOnboarding,
@@ -890,6 +915,40 @@ fun SettingsScreen(
                 onOpenDefaultNamingModel = { currentPage = SettingsPage.DefaultNamingModel.name },
                 onOpenDefaultCompactingModel = { currentPage = SettingsPage.DefaultCompactingModel.name },
                 onBack = { currentPage = SettingsPage.Providers.name },
+            )
+
+            SettingsPage.Subagents -> SubagentsPage(
+                sharedApiKey = subagentsSharedKeyValue,
+                agents = BuiltInSubagents.all.map { definition ->
+                    val config = subagentDrafts[definition.name]
+                    SubagentPageAgent(
+                        name = definition.name,
+                        displayName = definition.displayName,
+                        description = definition.description,
+                        enabled = config?.enabled ?: true,
+                        modelId = config?.modelId.orEmpty(),
+                        apiKeyOverride = config?.apiKeyOverride.orEmpty(),
+                    )
+                },
+                onSharedApiKeyChanged = { subagentsSharedKeyValue = it },
+                onAgentEnabledChange = { name, enabled ->
+                    subagentDrafts = subagentDrafts +
+                        (name to (subagentDrafts[name]?.copy(enabled = enabled) ?: SubagentConfig(enabled = enabled)))
+                    persistSettings()
+                },
+                onAgentModelChanged = { name, modelId ->
+                    subagentDrafts = subagentDrafts +
+                        (name to (subagentDrafts[name]?.copy(modelId = modelId) ?: SubagentConfig(modelId = modelId)))
+                    persistSettings()
+                },
+                // Key drafts are persisted with the rest of the settings on
+                // exit / ON_STOP rather than per keystroke.
+                onAgentApiKeyChanged = { name, apiKey ->
+                    subagentDrafts = subagentDrafts +
+                        (name to (subagentDrafts[name]?.copy(apiKeyOverride = apiKey) ?: SubagentConfig(apiKeyOverride = apiKey)))
+                },
+                onFetchModels = onFetchSubagentModels,
+                onBack = { currentPage = SettingsPage.Hub.name },
             )
 
             SettingsPage.DefaultChatModel -> ModelSelectionListPage(
@@ -1390,6 +1449,7 @@ private fun SettingsHub(
     extensionSettings: List<com.highsockscapital.sunshine.data.SunshineAppExtensionSettingsPage>,
     onOpenExtensionSettings: (String) -> Unit,
     mcpServerCount: Int,
+    subagentsSummary: String,
     scheduledTaskCount: Int,
     statisticsSummary: String,
     onReplayOnboarding: () -> Unit,
@@ -1452,6 +1512,13 @@ private fun SettingsHub(
                     title = stringResource(R.string.settings_model_providers),
                     subtitle = activeProviderName,
                     onClick = { onNavigate(SettingsPage.Providers) },
+                )
+                CardDivider()
+                SettingsNavRow(
+                    icon = Icons.Rounded.SmartToy,
+                    title = stringResource(R.string.settings_subagents),
+                    subtitle = subagentsSummary,
+                    onClick = { onNavigate(SettingsPage.Subagents) },
                 )
                 CardDivider()
                 SettingsNavRow(
@@ -7667,5 +7734,268 @@ private fun SettingsCircleButton(
             contentDescription = contentDescription,
             tint = if (enabled) SunshineOnSurface else SunshineOnSurface.copy(alpha = 0.45f),
         )
+    }
+}
+
+private data class SubagentPageAgent(
+    val name: String,
+    val displayName: String,
+    val description: String,
+    val enabled: Boolean,
+    val modelId: String,
+    val apiKeyOverride: String,
+)
+
+@Composable
+private fun SubagentsPage(
+    sharedApiKey: TextFieldValue,
+    agents: List<SubagentPageAgent>,
+    onSharedApiKeyChanged: (TextFieldValue) -> Unit,
+    onAgentEnabledChange: (String, Boolean) -> Unit,
+    onAgentModelChanged: (String, String) -> Unit,
+    onAgentApiKeyChanged: (String, String) -> Unit,
+    onFetchModels: (String, (List<String>) -> Unit) -> Unit,
+    onBack: () -> Unit,
+) {
+    SubPageScaffold(
+        title = stringResource(R.string.settings_subagents),
+        onBack = onBack,
+    ) {
+        SettingsCardGroup {
+            ChatGptTextField(
+                label = stringResource(R.string.settings_subagents_shared_key),
+                value = sharedApiKey,
+                onValueChange = onSharedApiKeyChanged,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                isSecret = true,
+            )
+        }
+        Text(
+            text = stringResource(R.string.settings_subagents_shared_key_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = SunshineOnSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        agents.forEach { agent ->
+            SubagentCard(
+                agent = agent,
+                sharedApiKey = sharedApiKey.text,
+                onEnabledChange = { enabled -> onAgentEnabledChange(agent.name, enabled) },
+                onModelChanged = { modelId -> onAgentModelChanged(agent.name, modelId) },
+                onApiKeyChanged = { apiKey -> onAgentApiKeyChanged(agent.name, apiKey) },
+                onFetchModels = onFetchModels,
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.settings_subagents_description),
+            style = MaterialTheme.typography.bodySmall,
+            color = SunshineOnSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun SubagentCard(
+    agent: SubagentPageAgent,
+    sharedApiKey: String,
+    onEnabledChange: (Boolean) -> Unit,
+    onModelChanged: (String) -> Unit,
+    onApiKeyChanged: (String) -> Unit,
+    onFetchModels: (String, (List<String>) -> Unit) -> Unit,
+) {
+    var showModelPicker by rememberSaveable { mutableStateOf(false) }
+    SettingsCardGroup {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Rounded.SmartToy,
+                contentDescription = null,
+                tint = SunshineOnSurfaceVariant,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = agent.displayName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = SunshineOnSurface,
+                )
+                Text(
+                    text = agent.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SunshineOnSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = agent.enabled,
+                onCheckedChange = onEnabledChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = SunshineOnPrimary,
+                    checkedTrackColor = SunshinePrimary,
+                ),
+            )
+        }
+        if (agent.enabled) {
+            CardDivider()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showModelPicker = !showModelPicker }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.settings_subagent_model),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = SunshineOnSurface,
+                    )
+                    Text(
+                        text = agent.modelId.ifBlank {
+                            stringResource(R.string.settings_subagent_model_automatic)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SunshineOnSurfaceVariant,
+                    )
+                }
+                Icon(
+                    if (showModelPicker) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = null,
+                    tint = SunshineOnSurfaceVariant,
+                )
+            }
+            if (showModelPicker) {
+                CardDivider()
+                SubagentModelPicker(
+                    selectedModelId = agent.modelId,
+                    apiKey = agent.apiKeyOverride.ifBlank { sharedApiKey },
+                    onModelSelected = onModelChanged,
+                    onFetchModels = onFetchModels,
+                )
+            }
+            CardDivider()
+            ChatGptTextField(
+                label = stringResource(R.string.settings_subagent_api_key_override),
+                value = TextFieldValue(agent.apiKeyOverride),
+                onValueChange = { onApiKeyChanged(it.text) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                isSecret = true,
+                supportingText = stringResource(R.string.settings_subagent_api_key_override_hint),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SubagentModelPicker(
+    selectedModelId: String,
+    apiKey: String,
+    onModelSelected: (String) -> Unit,
+    onFetchModels: (String, (List<String>) -> Unit) -> Unit,
+) {
+    var models by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+    var hasFetched by remember { mutableStateOf(false) }
+    var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(""))
+    }
+
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        if (!hasFetched) {
+            TextButton(onClick = {
+                isLoading = true
+                onFetchModels(apiKey) { fetched ->
+                    models = fetched
+                    isLoading = false
+                    hasFetched = true
+                }
+            }) {
+                Text(stringResource(R.string.settings_subagents_fetch_models))
+            }
+        }
+        when {
+            isLoading -> {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.settings_subagents_fetching_models),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SunshineOnSurfaceVariant,
+                    )
+                }
+            }
+            hasFetched && models.isEmpty() -> {
+                Text(
+                    text = stringResource(R.string.settings_subagents_models_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SunshineOnSurfaceVariant,
+                )
+            }
+            models.isNotEmpty() -> {
+                ChatGptTextField(
+                    label = stringResource(R.string.settings_subagents_search_models),
+                    value = query,
+                    onValueChange = { query = it },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                )
+                val filtered = remember(models, query) {
+                    val q = query.text.trim()
+                    if (q.isEmpty()) {
+                        models
+                    } else {
+                        models.filter { it.contains(q, ignoreCase = true) }
+                    }
+                }.take(60)
+                filtered.forEach { model ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onModelSelected(model)
+                            }
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            if (model == selectedModelId) {
+                                Icons.Rounded.CheckCircle
+                            } else {
+                                Icons.Rounded.RadioButtonUnchecked
+                            },
+                            contentDescription = null,
+                            tint = if (model == selectedModelId) SunshinePrimary else SunshineOnSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = model,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SunshineOnSurface,
+                        )
+                    }
+                }
+                if (filtered.size >= 60) {
+                    Text(
+                        text = stringResource(R.string.settings_subagents_search_models_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SunshineOnSurfaceVariant,
+                    )
+                }
+            }
+        }
     }
 }

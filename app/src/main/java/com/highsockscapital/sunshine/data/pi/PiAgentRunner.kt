@@ -33,6 +33,8 @@ import org.json.JSONObject
 
 private const val InjectedMessagePollIntervalMillis = 150L
 private const val SunshineExtensionGuestDirectory = "/root/.sunshine/extensions"
+/** pi global agents directory inside the Alpine guest, used for built-in subagents. */
+const val BuiltInAgentsGuestDirectory = "/root/.pi/agent/agents"
 
 class PiAgentRunner(
     private val bridge: PiKernelBridge,
