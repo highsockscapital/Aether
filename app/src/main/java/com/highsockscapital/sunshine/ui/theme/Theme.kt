@@ -109,6 +109,13 @@ val VazirmatnFontFamily = FontFamily(
     Font(R.font.vazirmatn_bold, FontWeight.Bold)
 )
 
+val InterFontFamily = FontFamily(
+    Font(R.font.inter_regular, FontWeight.Normal),
+    Font(R.font.inter_medium, FontWeight.Medium),
+    Font(R.font.inter_semibold, FontWeight.SemiBold),
+    Font(R.font.inter_bold, FontWeight.Bold)
+)
+
 private fun getSunshineTypography(fontFamily: FontFamily) = Typography(
     headlineLarge = TextStyle(
         fontFamily = fontFamily,
@@ -186,7 +193,7 @@ fun SunshineTheme(
     val currentFontFamily = if (language == AppLanguage.Persian) {
         VazirmatnFontFamily
     } else {
-        FontFamily.SansSerif
+        InterFontFamily
     }
     val layoutDirection = if (language == AppLanguage.Persian) {
         LayoutDirection.Rtl

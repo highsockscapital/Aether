@@ -697,7 +697,7 @@ private fun DrawerFloatingChatButton(
         modifier = modifier
             .shadow(18.dp, RoundedCornerShape(999.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
             .clip(RoundedCornerShape(999.dp))
-            .background(Color(0xFFAD7BF9))
+            .background(SunshinePrimary)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,

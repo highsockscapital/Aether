@@ -154,101 +154,6 @@ class SettingsRepository(
         parseProviderConfigs(preferences[PROVIDER_CONFIGS].orEmpty())
     }
 
-    suspend fun migrateLegacyProvidersToPi() {
-        context.dataStore.edit { prefs ->
-            val rawConfigs = prefs[PROVIDER_CONFIGS].orEmpty()
-            val parsedConfigs = parseProviderConfigs(rawConfigs).toMutableList()
-            val requiresConfigMigration = runCatching {
-                val array = JSONArray(rawConfigs)
-                (0 until array.length()).any { index ->
-                    val item = array.optJSONObject(index)
-                    item != null && (
-                        item.optString("piProviderId").isBlank() ||
-                            item.optString("authMethod").isBlank() ||
-                            item.has("providerType") ||
-                            item.has("basicFunctionCallingCompatibilityMode")
-                        )
-                }
-            }.getOrDefault(false)
-            if (
-                !requiresConfigMigration &&
-                prefs[PI_PROVIDER_ID]?.isNotBlank() == true &&
-                prefs[PROVIDER_AUTH_METHOD]?.isNotBlank() == true &&
-                prefs[PROVIDER] == null
-            ) {
-                return@edit
-            }
-            val legacyBaseUrl = prefs[BASE_URL] ?: AppSettings().baseUrl
-            val legacyApiKey = prefs[API_KEY].orEmpty()
-            val legacyModelId = prefs[MODEL_ID] ?: AppSettings().modelId
-            val migratedPiProviderId = prefs[PI_PROVIDER_ID]
-                ?.takeIf(String::isNotBlank)
-                ?: inferPiProviderIdFromBaseUrl(legacyBaseUrl)
-            val definition = PiProviderCatalog.resolve(migratedPiProviderId)
-            var matchingConfig = prefs[PROVIDER_CONFIG_ID]
-                ?.let { currentId -> parsedConfigs.firstOrNull { it.id == currentId } }
-                ?: parsedConfigs.firstOrNull { config ->
-                    config.piProviderId == definition.id &&
-                        config.baseUrl.trim() == legacyBaseUrl.trim() &&
-                        config.apiKey.trim() == legacyApiKey.trim() &&
-                        config.availableModels().contains(legacyModelId.trim())
-                }
-
-            val hasLegacySingleProvider = prefs[PROVIDER] != null ||
-                prefs[API_KEY]?.isNotBlank() == true ||
-                prefs[BASE_URL]?.isNotBlank() == true ||
-                prefs[MODEL_ID]?.isNotBlank() == true
-            if (matchingConfig == null && hasLegacySingleProvider) {
-                val baseProviderId = definition.id.sanitizeProviderId()
-                    .ifBlank { "provider" }
-                val migratedProviderId = generateSequence(baseProviderId) { current ->
-                    val suffix = current.substringAfterLast('_').toIntOrNull()
-                    "${baseProviderId}_${(suffix ?: 1) + 1}"
-                }.first { candidate -> parsedConfigs.none { it.providerId == candidate } }
-                matchingConfig = LlmProviderConfig(
-                    id = UUID.randomUUID().toString(),
-                    providerId = migratedProviderId,
-                    name = definition.displayName,
-                    piProviderId = definition.id,
-                    authMethod = definition.defaultAuthMethod(),
-                    apiKey = legacyApiKey,
-                    baseUrl = legacyBaseUrl.ifBlank { definition.defaultBaseUrl },
-                    modelId = legacyModelId.ifBlank { definition.defaultModelId },
-                    manualModelIds = listOf(
-                        legacyModelId.ifBlank { definition.defaultModelId },
-                    ).filter(String::isNotBlank),
-                    enabledModelIds = listOf(
-                        legacyModelId.ifBlank { definition.defaultModelId },
-                    ).filter(String::isNotBlank),
-                )
-                parsedConfigs += matchingConfig
-            }
-
-            if (requiresConfigMigration || matchingConfig != null) {
-                prefs[PROVIDER_CONFIGS] = serializeProviderConfigs(parsedConfigs)
-            }
-            prefs[PI_PROVIDER_ID] = definition.id
-            prefs[PROVIDER_AUTH_METHOD] = (
-                matchingConfig?.authMethod ?: definition.defaultAuthMethod()
-                ).storageValue
-            matchingConfig?.let { config ->
-                prefs[PROVIDER_CONFIG_ID] = config.id
-                prefs[API_KEY] = config.apiKey
-                prefs[OAUTH_CREDENTIAL_JSON] = config.oauthCredentialJson
-                prefs[PROVIDER_ENVIRONMENT_VARIABLES] =
-                    serializeProviderEnvironmentVariables(
-                        config.providerEnvironmentVariables,
-                    )
-                prefs[BASE_URL] = config.baseUrl
-                prefs[MODEL_ID] = legacyModelId.ifBlank { config.modelId }
-                prefs[USER_AGENT] = normalizeLlmUserAgent(config.userAgent)
-            }
-            prefs.remove(PROVIDER)
-            prefs.remove(BASIC_FUNCTION_CALLING_COMPATIBILITY_MODE)
-            prefs.remove(UNSUPPORTED_PARALLEL_TOOL_CALL_PROVIDER_KEYS)
-        }
-    }
-
     suspend fun upsertProviderConfig(config: LlmProviderConfig) {
         context.dataStore.edit { prefs ->
             val current = parseProviderConfigs(prefs[PROVIDER_CONFIGS].orEmpty()).toMutableList()
@@ -403,7 +308,6 @@ class SettingsRepository(
             it[AUTO_COMPACT_ENABLED] = settings.autoCompactEnabled
             it[AUTO_COMPACT_THRESHOLD_PERCENT] = settings.autoCompactThresholdPercent
             it[DEFAULT_SELECTED_SKILL_IDS] = serializeStringArray(settings.defaultSelectedSkillIds)
-            it.remove(PROVIDER)
             it.remove(BASIC_FUNCTION_CALLING_COMPATIBILITY_MODE)
             it.remove(UNSUPPORTED_PARALLEL_TOOL_CALL_PROVIDER_KEYS)
             it[ONBOARDING_SEEN_VERSION] = settings.onboardingSeenVersion
@@ -488,7 +392,6 @@ class SettingsRepository(
             it[AUTO_COMPACT_ENABLED] = settings.autoCompactEnabled
             it[AUTO_COMPACT_THRESHOLD_PERCENT] = settings.autoCompactThresholdPercent
             it[DEFAULT_SELECTED_SKILL_IDS] = serializeStringArray(settings.defaultSelectedSkillIds)
-            it.remove(PROVIDER)
             it.remove(BASIC_FUNCTION_CALLING_COMPATIBILITY_MODE)
             it.remove(UNSUPPORTED_PARALLEL_TOOL_CALL_PROVIDER_KEYS)
             it[PRIVACY_POLICY_ACCEPTED] =
@@ -533,7 +436,6 @@ class SettingsRepository(
         }.first()
 
     private companion object {
-        val PROVIDER = stringPreferencesKey("provider")
         val PI_PROVIDER_ID = stringPreferencesKey("pi_provider_id")
         val PROVIDER_CONFIG_ID = stringPreferencesKey("provider_config_id")
         val PROVIDER_AUTH_METHOD = stringPreferencesKey("provider_auth_method")

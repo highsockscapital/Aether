@@ -79,6 +79,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
+import com.highsockscapital.sunshine.data.AppThemeMode
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -298,6 +301,29 @@ fun SunshineApp(
         if (uiState.currentScreen == AppScreen.Settings) {
             viewModel.refreshUsageStatisticsSnapshots()
         }
+    }
+
+    // Status bar matches the window background: dark icons on the cream
+    // light theme, light icons in dark theme.
+    val darkTheme = uiState.settings.themeMode == AppThemeMode.Dark ||
+        (
+            uiState.settings.themeMode == AppThemeMode.System &&
+                (
+                    LocalContext.current.resources.configuration.uiMode and
+                        android.content.res.Configuration.UI_MODE_NIGHT_MASK
+                    ) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            )
+    DisposableEffect(darkTheme) {
+        val style = if (darkTheme) {
+            SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        } else {
+            SystemBarStyle.light(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT,
+            )
+        }
+        enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+        onDispose { }
     }
 
     CompositionLocalProvider(

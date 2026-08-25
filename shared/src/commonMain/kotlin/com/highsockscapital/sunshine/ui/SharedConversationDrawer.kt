@@ -82,6 +82,7 @@ import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
 import com.highsockscapital.sunshine.ui.theme.SunshineBackground
 import com.highsockscapital.sunshine.ui.theme.SunshineScrim
+import com.highsockscapital.sunshine.ui.theme.SunshinePrimary
 import com.highsockscapital.sunshine.ui.theme.SunshineSidebarBackground
 import com.highsockscapital.sunshine.ui.theme.SunshineSurface
 import com.highsockscapital.sunshine.ui.theme.SunshineSurfaceHigh
@@ -295,7 +296,7 @@ fun SunshineConversationDrawer(
                     .padding(end = 18.dp, bottom = 18.dp)
                     .shadow(18.dp, RoundedCornerShape(999.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
                     .clip(RoundedCornerShape(999.dp))
-                    .background(Color(0xFFAD7BF9))
+                    .background(SunshinePrimary)
                     .clickable {
                         dismissSearch()
                         onNewChat()

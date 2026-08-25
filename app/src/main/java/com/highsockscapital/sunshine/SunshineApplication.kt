@@ -256,9 +256,6 @@ class SunshineAppRuntime(
             alpineRuntime.refreshApkRepositoriesForCurrentNetwork()
         }
         appScope.launch {
-            settingsRepository.migrateLegacyProvidersToPi()
-        }
-        appScope.launch {
             if (settingsRepository.settings.first().privacyPolicyAccepted) {
                 initializePostHog()
             }
