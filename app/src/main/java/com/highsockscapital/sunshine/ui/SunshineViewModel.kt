@@ -558,15 +558,13 @@ class SunshineViewModel(
                 result = rootState.issue.name.lowercase(),
             )
             if (rootState.isReady) {
-                val settings = _uiState.value.settings
-                val updatedSettings = settings.withRuntimeEnabled(LocalRuntimeId.Termux).copy(
-                    agentModeAuthorizationEnabled = true,
-                    agentModeAuthorizationMethod = AgentModeAuthorizationMethod.Root,
-                    termuxSetupCompleted = true,
-                )
-                settingsRepository.updateSettings(
-                    updatedSettings
-                )
+                val updatedSettings = settingsRepository.updateSettings { current ->
+                    current.withRuntimeEnabled(LocalRuntimeId.Termux).copy(
+                        agentModeAuthorizationEnabled = true,
+                        agentModeAuthorizationMethod = AgentModeAuthorizationMethod.Root,
+                        termuxSetupCompleted = true,
+                    )
+                }
                 agentModeController.refreshAuthorization(updatedSettings)
             }
             val inspectedSetupState = withContext(Dispatchers.IO) { bashTool.inspectSetup() }
@@ -674,33 +672,31 @@ class SunshineViewModel(
                 )
             }
             if (setupState.isReady) {
-                val storedSettings = _uiState.value.settings
-                val settings = storedSettings.copy(
-                    alpineSetupCompleted = true,
-                    enabledRuntimeIds = storedSettings.enabledRuntimeIds + LocalRuntimeId.Alpine,
-                )
-                if (settings != storedSettings) settingsRepository.updateSettings(settings)
-                val verifiedProfiles = withContext(Dispatchers.IO) {
-                    settings.alpinePackageProfiles.mapValues { (profileId, profileState) ->
-                        if (
-                            profileState.installed &&
-                            !runtime.alpineRuntime.isPackageProfileInstalled(profileId)
-                        ) {
-                            profileState.copy(
-                                installed = false,
-                                installedAtMillis = 0L,
-                                lastError = "",
-                            )
-                        } else {
-                            profileState
-                        }
-                    }
-                }
-                if (verifiedProfiles != settings.alpinePackageProfiles) {
-                    settingsRepository.updateSettings(
-                        settings.copy(alpinePackageProfiles = verifiedProfiles)
+                val settings = settingsRepository.updateSettings { current ->
+                    val withSetupCompleted = current.copy(
+                        alpineSetupCompleted = true,
+                        enabledRuntimeIds = current.enabledRuntimeIds + LocalRuntimeId.Alpine,
                     )
-                    if (verifiedProfiles["chrome"]?.installed != true) {
+                    withSetupCompleted.copy(
+                        alpinePackageProfiles = withSetupCompleted.alpinePackageProfiles
+                            .mapValues { (profileId, profileState) ->
+                                if (
+                                    profileState.installed &&
+                                    !runtime.alpineRuntime.isPackageProfileInstalled(profileId)
+                                ) {
+                                    profileState.copy(
+                                        installed = false,
+                                        installedAtMillis = 0L,
+                                        lastError = "",
+                                    )
+                                } else {
+                                    profileState
+                                }
+                            }
+                    )
+                }
+                run {
+                    if (settings.alpinePackageProfiles["chrome"]?.installed != true) {
                         _uiState.update { current ->
                             current.copy(
                                 draftChromeEnabled = false,
@@ -788,20 +784,19 @@ class SunshineViewModel(
                 emitTransientMessage(UiText.Raw(detail))
                 return@launch
             }
-            val settings = _uiState.value.settings
-            val remainingRuntimeIds = settings.enabledRuntimeIds - LocalRuntimeId.Alpine
-            settingsRepository.updateSettings(
-                settings.copy(
+            settingsRepository.updateSettings { current ->
+                val remainingRuntimeIds = current.enabledRuntimeIds - LocalRuntimeId.Alpine
+                current.copy(
                     alpineSetupCompleted = false,
                     alpinePackageProfiles = emptyMap(),
                     enabledRuntimeIds = remainingRuntimeIds,
-                    defaultRuntimeId = if (settings.defaultRuntimeId == LocalRuntimeId.Alpine) {
+                    defaultRuntimeId = if (current.defaultRuntimeId == LocalRuntimeId.Alpine) {
                         remainingRuntimeIds.firstOrNull()
                     } else {
-                        settings.defaultRuntimeId
+                        current.defaultRuntimeId
                     },
                 )
-            )
+            }
             _uiState.update { current ->
                 current.copy(
                     alpinePackageInstallProgress = emptyMap(),
@@ -846,12 +841,12 @@ class SunshineViewModel(
             }
         }
         if (setupState.isReady) {
-            settingsRepository.updateSettings(
-                _uiState.value.settings.withRuntimeEnabled(
+            settingsRepository.updateSettings {
+                it.withRuntimeEnabled(
                     runtimeId = LocalRuntimeId.Alpine,
                     makeDefault = makeDefault,
                 )
-            )
+            }
         }
         _uiState.update { current -> current.copy(alpineSetupState = setupState) }
         if (setupState.isReady) {
@@ -973,19 +968,18 @@ class SunshineViewModel(
                 runtime.alpineChromeController.stop()
                 runtime.alpineRuntime.reset()
             }
-            val settings = _uiState.value.settings
-            settingsRepository.updateSettings(
-                settings.copy(
-                    enabledRuntimeIds = settings.enabledRuntimeIds - LocalRuntimeId.Alpine,
-                    defaultRuntimeId = if (settings.defaultRuntimeId == LocalRuntimeId.Alpine) {
-                        (settings.enabledRuntimeIds - LocalRuntimeId.Alpine).firstOrNull()
+            settingsRepository.updateSettings { current ->
+                current.copy(
+                    enabledRuntimeIds = current.enabledRuntimeIds - LocalRuntimeId.Alpine,
+                    defaultRuntimeId = if (current.defaultRuntimeId == LocalRuntimeId.Alpine) {
+                        (current.enabledRuntimeIds - LocalRuntimeId.Alpine).firstOrNull()
                     } else {
-                        settings.defaultRuntimeId
+                        current.defaultRuntimeId
                     },
                     alpineSetupCompleted = false,
                     alpinePackageProfiles = emptyMap(),
                 )
-            )
+            }
             _uiState.update { current ->
                 current.copy(
                     alpineSetupState = setupState,
@@ -1064,12 +1058,12 @@ class SunshineViewModel(
                     lastError = installState.detail.ifBlank { "Install failed." },
                 )
             }
-            val settings = _uiState.value.settings
-            settingsRepository.updateSettings(
-                settings.copy(
-                    alpinePackageProfiles = settings.alpinePackageProfiles + (profileId to profileState),
+            settingsRepository.updateSettings { current ->
+                current.copy(
+                    alpinePackageProfiles =
+                        current.alpinePackageProfiles + (profileId to profileState),
                 )
-            )
+            }
             val runtimeState = withContext(Dispatchers.IO) {
                 runtime.alpineRuntime.inspectSetup()
             }
@@ -1091,13 +1085,12 @@ class SunshineViewModel(
 
     fun setDefaultRuntime(runtimeId: LocalRuntimeId) {
         viewModelScope.launch {
-            val settings = _uiState.value.settings
-            settingsRepository.updateSettings(
-                settings.copy(
-                    enabledRuntimeIds = settings.enabledRuntimeIds + runtimeId,
+            settingsRepository.updateSettings { current ->
+                current.copy(
+                    enabledRuntimeIds = current.enabledRuntimeIds + runtimeId,
                     defaultRuntimeId = runtimeId,
                 )
-            )
+            }
         }
     }
 
@@ -1506,9 +1499,10 @@ class SunshineViewModel(
             val enabledConfig = config.copy(isEnabled = true)
             settingsRepository.upsertProviderConfig(enabledConfig)
             settingsRepository.setProviderEnabled(enabledConfig.id, true)
-            val updatedSettings = _uiState.value.settings.withExplicitDefaultChatModel(enabledConfig)
+            val updatedSettings = settingsRepository.updateSettings {
+                it.withExplicitDefaultChatModel(enabledConfig)
+            }
             val defaultModelKey = updatedSettings.defaultChatModelKey
-            settingsRepository.updateSettings(updatedSettings)
             settingsRepository.updateOnboardingSeenVersion(CurrentOnboardingVersion)
             _uiState.update { current ->
                 current.copy(
@@ -1561,9 +1555,9 @@ class SunshineViewModel(
 
     fun dismissTermuxSetupNotice() {
         viewModelScope.launch {
-            settingsRepository.updateSettings(
-                _uiState.value.settings.copy(termuxSetupNoticeDismissed = true)
-            )
+            settingsRepository.updateSettings {
+                it.copy(termuxSetupNoticeDismissed = true)
+            }
         }
     }
 
@@ -1589,12 +1583,12 @@ class SunshineViewModel(
         method: AgentModeAuthorizationMethod,
     ) {
         viewModelScope.launch {
-            settingsRepository.updateSettings(
-                _uiState.value.settings.copy(
+            settingsRepository.updateSettings {
+                it.copy(
                     agentModeAuthorizationEnabled = enabled,
                     agentModeAuthorizationMethod = method,
                 )
-            )
+            }
         }
     }
 
@@ -2509,8 +2503,8 @@ class SunshineViewModel(
             // NonCancellable: closing the app can tear down the ViewModel and
             // cancel this coroutine before DataStore persists anything.
             withContext(NonCancellable) {
-            settingsRepository.updateSettings(
-                currentState.settings.copy(
+            val updatedSettings = settingsRepository.updateSettings { stored ->
+                stored.copy(
                     piProviderId = selectedModelSettings.piProviderId,
                     providerConfigId = selectedModelSettings.providerConfigId,
                     providerAuthMethod = selectedModelSettings.providerAuthMethod,
@@ -2548,7 +2542,10 @@ class SunshineViewModel(
                     autoCompactEnabled = autoCompactEnabled,
                     autoCompactThresholdPercent = autoCompactThresholdPercent.coerceIn(50, 95),
                 )
-            )
+            }
+            // Mirror the persisted settings into UI state immediately so other
+            // writers snapshot fresh values instead of stale defaults.
+            _uiState.update { current -> current.copy(settings = updatedSettings) }
             }
         }
     }
@@ -2567,12 +2564,15 @@ class SunshineViewModel(
                     )
                 }
             withContext(NonCancellable) {
-                settingsRepository.updateSettings(
-                    _uiState.value.settings.copy(
+                val updatedSettings = settingsRepository.updateSettings { stored ->
+                    stored.copy(
                         subagentsSharedOpenRouterApiKey = sharedOpenRouterApiKey.trim(),
                         subagentConfigs = normalizedConfigs,
                     )
-                )
+                }
+                _uiState.update { current ->
+                    current.copy(settings = updatedSettings)
+                }
             }
         }
     }
@@ -2673,9 +2673,9 @@ class SunshineViewModel(
 
     fun setReasoningEffort(effort: String) {
         viewModelScope.launch {
-            settingsRepository.updateSettings(
-                _uiState.value.settings.copy(reasoningEffort = normalizeReasoningEffort(effort)),
-            )
+            settingsRepository.updateSettings {
+                it.copy(reasoningEffort = normalizeReasoningEffort(effort))
+            }
         }
     }
 
@@ -3481,7 +3481,7 @@ class SunshineViewModel(
             } else {
                 AgentWorkspaceMode.Shared
             }
-            settingsRepository.updateSettings(settings.copy(agentWorkspaceMode = mode))
+            settingsRepository.updateSettings { it.copy(agentWorkspaceMode = mode) }
         }
     }
 
@@ -4086,8 +4086,8 @@ class SunshineViewModel(
             )
 
         "settings.patch" -> {
-            val current = _uiState.value.settings
-            var updated = current
+            val updated = settingsRepository.updateSettings { current ->
+                var updated = current
             if (args.has("system_prompt")) {
                 updated = updated.copy(systemPrompt = args.optString("system_prompt"))
             }
@@ -4138,7 +4138,8 @@ class SunshineViewModel(
                     tavilyBaseUrl = normalizeTavilyBaseUrl(args.optString("tavily_base_url"))
                 )
             }
-            settingsRepository.updateSettings(updated)
+                updated
+            }
             JSONObject().put("settings", updated.toJson())
         }
 
