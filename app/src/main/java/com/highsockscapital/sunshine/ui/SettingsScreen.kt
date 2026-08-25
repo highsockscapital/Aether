@@ -354,7 +354,7 @@ private const val PageTransitionDuration = 320
 private val PageTransitionEasing = CubicBezierEasing(0.22f, 0.84f, 0.18f, 1f)
 private val SettingsTopFadeHeight = 40.dp
 private val StatisticsInputColor = Color(0xFF5D7CFF)
-private val StatisticsOutputColor = Color(0xFF7B68EE)
+private val StatisticsOutputColor = Color(0xFFFF9E43)
 private val StatisticsReasoningColor = Color(0xFFA9B8FF)
 private val StatisticsNeutralChartColor = Color(0xFFDCE4FF)
 

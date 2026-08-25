@@ -179,7 +179,7 @@ fun SunshineConversationEmptyState(
                 ConversationStarterChip(
                     icon = Icons.Rounded.Terminal,
                     label = codeLabel,
-                    iconTint = Color(0xFF7D70DD),
+                    iconTint = Color(0xFFFF9E43),
                     onClick = { onStarterPromptSelected("Help me write or debug this code: ") },
                 )
             }
