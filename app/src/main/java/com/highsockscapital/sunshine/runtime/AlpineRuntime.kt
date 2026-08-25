@@ -1150,7 +1150,7 @@ class AlpineRuntime(
         val command = when (profileId) {
             "python" -> "python3 --version && pip3 --version && virtualenv --version"
             "node" -> "node --version && npm --version"
-            "git_search" -> "git --version && rg --version && fd --version"
+            "git_search" -> "git --version && rg --version && fd --version && gh --version"
             "ssh" -> "ssh -V"
             "chrome" ->
                 "(chromium-browser --version || chromium --version) && " +
@@ -1296,7 +1296,7 @@ class AlpineRuntime(
         val AlpinePackageProfiles: Map<String, List<String>> = mapOf(
             "python" to listOf("python3", "py3-pip", "py3-virtualenv"),
             "node" to listOf("nodejs", "npm"),
-            "git_search" to listOf("git", "ripgrep", "fd"),
+            "git_search" to listOf("git", "ripgrep", "fd", "github-cli"),
             "ssh" to listOf("openssh-client"),
             "chrome" to listOf(
                 "chromium",
