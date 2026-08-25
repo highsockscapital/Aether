@@ -314,6 +314,13 @@ fun SunshineApp(
                     ) == android.content.res.Configuration.UI_MODE_NIGHT_YES
             )
     DisposableEffect(darkTheme) {
+        var activityContext = LocalContext.current
+        while (
+            activityContext is android.content.ContextWrapper &&
+            activityContext !is androidx.activity.ComponentActivity
+        ) {
+            activityContext = activityContext.baseContext
+        }
         val style = if (darkTheme) {
             SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         } else {
@@ -322,7 +329,8 @@ fun SunshineApp(
                 android.graphics.Color.TRANSPARENT,
             )
         }
-        enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+        (activityContext as? androidx.activity.ComponentActivity)
+            ?.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
         onDispose { }
     }
 
