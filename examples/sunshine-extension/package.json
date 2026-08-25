@@ -1,0 +1,23 @@
+{
+  "name": "sunshine-combined-extension-example",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "sunshine": {
+    "api": {
+      "min": 2,
+      "max": 2
+    },
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "devDependencies": {
+    "@highsockscapital/sunshine-extension-api": "^2.0.0"
+  }
+}

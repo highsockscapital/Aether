@@ -87,11 +87,11 @@ function normalizeDetails(details: Record<string, unknown>): string {
 
 /**
  * Returns true when verbose bridge debug logging is enabled. The Android host
- * sets AETHER_PI_BRIDGE_DEBUG=1 on the bridge process when diagnostics are on.
+ * sets SUNSHINE_PI_BRIDGE_DEBUG=1 on the bridge process when diagnostics are on.
  * Also honor PI_BRIDGE_DEBUG for local command-line troubleshooting.
  */
 export function bridgeDebugEnabled(): boolean {
-  const raw = process.env.AETHER_PI_BRIDGE_DEBUG ?? process.env.PI_BRIDGE_DEBUG ?? "";
+  const raw = process.env.SUNSHINE_PI_BRIDGE_DEBUG ?? process.env.PI_BRIDGE_DEBUG ?? "";
   const normalized = raw.trim().toLowerCase();
   return normalized !== "" && normalized !== "0" && normalized !== "false";
 }

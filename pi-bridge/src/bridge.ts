@@ -74,20 +74,20 @@ import {
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
 import type { TSchema } from "typebox";
 import {
-  discoverAetherExtensionPaths,
+  discoverSunshineExtensionPaths,
   discoverPackageExtensionPaths,
-  installAetherExtensionPackage,
-  listAetherExtensionPackages,
-  removeAetherExtensionPackage,
-  updateAetherExtensionPackage,
+  installSunshineExtensionPackage,
+  listSunshineExtensionPackages,
+  removeSunshineExtensionPackage,
+  updateSunshineExtensionPackage,
 } from "./extensions.js";
 import {
-  aetherAppExtensionSnapshot,
-  configureAetherExtensionTransport,
-  dispatchAetherAppExtensionEvent,
-  invokeAetherAppExtensionAction,
-  loadAetherAppExtensions,
-} from "./aether-extensions.js";
+  sunshineAppExtensionSnapshot,
+  configureSunshineExtensionTransport,
+  dispatchSunshineAppExtensionEvent,
+  invokeSunshineAppExtensionAction,
+  loadSunshineAppExtensions,
+} from "./sunshine-extensions.js";
 import { bridgeDebug, bridgeDebugEnabled, elapsedMillis } from "./debug.js";
 
 registerBunOAuthFlows();
@@ -96,7 +96,7 @@ const BRIDGE_VERSION = "2.0.0-alpha.0";
 const PI_AI_VERSION = "0.84.1";
 const PI_AGENT_CORE_VERSION = "0.84.1";
 const PI_CODING_AGENT_VERSION = "0.84.1";
-const AETHER_LOOPBACK_OAUTH_CALLBACK_HOST = "127.0.0.1";
+const SUNSHINE_LOOPBACK_OAUTH_CALLBACK_HOST = "127.0.0.1";
 const OAUTH_FETCH_MAX_ATTEMPTS = 3;
 const DEFAULT_AGENT_RETRY_MAX_RETRIES = 5;
 const RUNTIME_OPERATION_CHUNK_BYTES = 64 * 1024;
@@ -154,7 +154,7 @@ interface PendingRuntimeOperation {
   onChunk?: (chunk: Buffer) => void;
 }
 
-interface PendingAetherHostCall {
+interface PendingSunshineHostCall {
   resolve: (result: JsonObject) => void;
   reject: (error: Error) => void;
   timeout: NodeJS.Timeout;
@@ -190,10 +190,10 @@ interface AgentSessionState {
 const activeAborters = new Map<string, () => void | Promise<unknown>>();
 const pendingHostToolRequests = new Map<string, PendingHostToolRequest>();
 const pendingRuntimeOperations = new Map<string, PendingRuntimeOperation>();
-const pendingAetherHostCalls = new Map<string, PendingAetherHostCall>();
-const aetherSubscriberRequestIds = new Set<string>();
-const aetherOperationContext = new AsyncLocalStorage<string>();
-const activeAetherOperationRequestIds = new Set<string>();
+const pendingSunshineHostCalls = new Map<string, PendingSunshineHostCall>();
+const sunshineSubscriberRequestIds = new Set<string>();
+const sunshineOperationContext = new AsyncLocalStorage<string>();
+const activeSunshineOperationRequestIds = new Set<string>();
 const pendingAuthPrompts = new Map<
   string,
   {
@@ -223,7 +223,7 @@ let oauthTransportQueue: Promise<void> = Promise.resolve();
 
 const builtinProviderById = new Map(
   builtinProviders().map((provider) => {
-    const oauth = aetherOAuthAuth(provider.id, provider.auth.oauth);
+    const oauth = sunshineOAuthAuth(provider.id, provider.auth.oauth);
     return [
       provider.id,
       oauth
@@ -242,7 +242,7 @@ let defaultModelConfig: ModelConfig | undefined;
 let hostToolCounter = 0;
 let runtimeOperationCounter = 0;
 let authPromptCounter = 0;
-let aetherHostCallCounter = 0;
+let sunshineHostCallCounter = 0;
 let compileCacheFlushed = false;
 
 function flushStartupCompileCache(): void {
@@ -255,13 +255,13 @@ function flushStartupCompileCache(): void {
   }
 }
 
-function aetherOAuthAuth(providerId: string, oauth: OAuthAuth | undefined): OAuthAuth | undefined {
+function sunshineOAuthAuth(providerId: string, oauth: OAuthAuth | undefined): OAuthAuth | undefined {
   if (!oauth) return undefined;
   if (providerId !== "openai-codex") return oauth;
   return {
     ...oauth,
     login: async (interaction) =>
-      withAetherOAuthTransport(providerId, interaction, () =>
+      withSunshineOAuthTransport(providerId, interaction, () =>
         oauth.login({
           ...interaction,
           prompt: (prompt) =>
@@ -421,25 +421,25 @@ function writeError(id: string | undefined, error: unknown, code = "bridge_error
   });
 }
 
-function emitAetherSubscriberEvent(event: string, payload: JsonObject = {}): void {
-  for (const requestId of aetherSubscriberRequestIds) {
+function emitSunshineSubscriberEvent(event: string, payload: JsonObject = {}): void {
+  for (const requestId of sunshineSubscriberRequestIds) {
     writeEvent(requestId, event, payload);
   }
 }
 
-function requestAetherHost(method: string, args: JsonObject): Promise<JsonObject> {
-  const operationRequestId = aetherOperationContext.getStore();
+function requestSunshineHost(method: string, args: JsonObject): Promise<JsonObject> {
+  const operationRequestId = sunshineOperationContext.getStore();
   const requestId = operationRequestId &&
-      activeAetherOperationRequestIds.has(operationRequestId)
+      activeSunshineOperationRequestIds.has(operationRequestId)
     ? operationRequestId
-    : aetherSubscriberRequestIds.values().next().value;
+    : sunshineSubscriberRequestIds.values().next().value;
   if (!requestId) {
-    bridgeDebug("aether_host_call_no_subscriber", { method });
-    throw new Error("The Aether app host is not subscribed.");
+    bridgeDebug("sunshine_host_call_no_subscriber", { method });
+    throw new Error("The Sunshine app host is not subscribed.");
   }
-  const callId = `aether-host-${Date.now()}-${++aetherHostCallCounter}`;
-  bridgeDebug("aether_host_call_start", { call_id: callId, method, routed_request_id: requestId });
-  writeEvent(requestId, "aether_host_call", {
+  const callId = `sunshine-host-${Date.now()}-${++sunshineHostCallCounter}`;
+  bridgeDebug("sunshine_host_call_start", { call_id: callId, method, routed_request_id: requestId });
+  writeEvent(requestId, "sunshine_host_call", {
     call_id: callId,
     method,
     args,
@@ -447,55 +447,55 @@ function requestAetherHost(method: string, args: JsonObject): Promise<JsonObject
   const startedAt = Date.now();
   return new Promise<JsonObject>((resolve, reject) => {
     const timeout = setTimeout(() => {
-      pendingAetherHostCalls.delete(callId);
-      bridgeDebug("aether_host_call_timeout", {
+      pendingSunshineHostCalls.delete(callId);
+      bridgeDebug("sunshine_host_call_timeout", {
         call_id: callId,
         method,
         elapsed_ms: elapsedMillis(startedAt),
       });
-      reject(new Error(`Aether host call timed out: ${method}`));
+      reject(new Error(`Sunshine host call timed out: ${method}`));
     }, 2 * 60 * 1000);
-    pendingAetherHostCalls.set(callId, { resolve, reject, timeout });
+    pendingSunshineHostCalls.set(callId, { resolve, reject, timeout });
   });
 }
 
-async function runAetherOperation<T>(
+async function runSunshineOperation<T>(
   requestId: string,
   operation: () => Promise<T>,
 ): Promise<T> {
-  activeAetherOperationRequestIds.add(requestId);
+  activeSunshineOperationRequestIds.add(requestId);
   try {
-    return await aetherOperationContext.run(requestId, operation);
+    return await sunshineOperationContext.run(requestId, operation);
   } finally {
-    activeAetherOperationRequestIds.delete(requestId);
+    activeSunshineOperationRequestIds.delete(requestId);
   }
 }
 
-function resolveAetherHostCall(payload: JsonObject): boolean {
+function resolveSunshineHostCall(payload: JsonObject): boolean {
   const callId = asString(payload.call_id).trim();
-  const pending = callId ? pendingAetherHostCalls.get(callId) : undefined;
+  const pending = callId ? pendingSunshineHostCalls.get(callId) : undefined;
   if (!pending) {
-    bridgeDebug("aether_host_result_orphaned", { call_id: callId });
+    bridgeDebug("sunshine_host_result_orphaned", { call_id: callId });
     return false;
   }
-  pendingAetherHostCalls.delete(callId);
+  pendingSunshineHostCalls.delete(callId);
   clearTimeout(pending.timeout);
-  bridgeDebug("aether_host_call_resolved", { call_id: callId, ok: asBoolean(payload.ok, true) });
+  bridgeDebug("sunshine_host_call_resolved", { call_id: callId, ok: asBoolean(payload.ok, true) });
   if (asBoolean(payload.ok, true)) {
     pending.resolve(asObject(payload.result));
   } else {
-    pending.reject(new Error(asString(payload.error, "Aether host call failed.")));
+    pending.reject(new Error(asString(payload.error, "Sunshine host call failed.")));
   }
   return true;
 }
 
-configureAetherExtensionTransport({
-  requestHost: requestAetherHost,
+configureSunshineExtensionTransport({
+  requestHost: requestSunshineHost,
   invalidate(version) {
-    emitAetherSubscriberEvent("aether_invalidated", { version });
+    emitSunshineSubscriberEvent("sunshine_invalidated", { version });
   },
   notify(message, level) {
-    emitAetherSubscriberEvent("aether_notification", { message, level });
+    emitSunshineSubscriberEvent("sunshine_notification", { message, level });
   },
 });
 
@@ -588,7 +588,7 @@ function fetchUrl(input: string | URL | Request): string {
   return input.url;
 }
 
-async function withAetherOAuthTransport<T>(
+async function withSunshineOAuthTransport<T>(
   providerId: string,
   interaction: AuthInteraction,
   login: () => Promise<T>,
@@ -604,7 +604,7 @@ async function withAetherOAuthTransport<T>(
 
   const previousCallbackHost = process.env.PI_OAUTH_CALLBACK_HOST;
   const originalFetch = globalThis.fetch;
-  process.env.PI_OAUTH_CALLBACK_HOST = AETHER_LOOPBACK_OAUTH_CALLBACK_HOST;
+  process.env.PI_OAUTH_CALLBACK_HOST = SUNSHINE_LOOPBACK_OAUTH_CALLBACK_HOST;
   globalThis.fetch = async (input, init) => {
     const url = fetchUrl(input);
     if (!url.startsWith("https://auth.openai.com/")) {
@@ -829,7 +829,7 @@ function apiStreamsFor(piApi: string): ProviderStreams {
   }
 }
 
-function createAetherModel(config: ModelConfig): Model<string> {
+function createSunshineModel(config: ModelConfig): Model<string> {
   return {
     id: config.model_id,
     name: config.model_id,
@@ -971,7 +971,7 @@ function buildModels(config: ModelConfig): {
   }
 
   const models = createModels();
-  const model = createAetherModel(config);
+  const model = createSunshineModel(config);
   bridgeDebug("build_models_path", { path: "custom", pi_api: config.pi_api });
   const headers = config.custom_headers ?? {};
   const provider = createProvider({
@@ -981,14 +981,14 @@ function buildModels(config: ModelConfig): {
     headers,
     auth: {
       apiKey: {
-        name: "Aether provider credentials",
+        name: "Sunshine provider credentials",
         resolve: async () => ({
           auth: {
             apiKey: config.api_key || undefined,
             baseUrl: config.base_url || undefined,
             headers,
           },
-          source: "Aether",
+          source: "Sunshine",
         }),
       },
     },
@@ -1141,8 +1141,8 @@ function normalizeMessages(rawMessages: unknown): Context["messages"] {
         {
           role: "assistant" as const,
           content: [{ type: "text" as const, text: asString(raw.text, textFromContent(raw.content)) }],
-          api: asString(raw.api, "aether"),
-          provider: asString(raw.provider, "aether"),
+          api: asString(raw.api, "sunshine"),
+          provider: asString(raw.provider, "sunshine"),
           model: asString(raw.model, "unknown"),
           usage: emptyUsage(),
           stopReason: "stop" as const,
@@ -1487,17 +1487,17 @@ function latestAssistantMessage(messages: AgentMessage[]): AssistantMessage | un
   return undefined;
 }
 
-const AETHER_HOST_TOOL_NAMES = new Set([
+const SUNSHINE_HOST_TOOL_NAMES = new Set([
   "browser",
-  "aether_config_get",
-  "aether_config_set",
-  "aether_skill_manage",
-  "aether_termux_manage",
-  "aether_agent_mode_manage",
-  "aether_scheduled_task_manage",
-  "aether_extension_manage",
-  "aether_developer_manage",
-  "aether_runtime_manage",
+  "sunshine_config_get",
+  "sunshine_config_set",
+  "sunshine_skill_manage",
+  "sunshine_termux_manage",
+  "sunshine_agent_mode_manage",
+  "sunshine_scheduled_task_manage",
+  "sunshine_extension_manage",
+  "sunshine_developer_manage",
+  "sunshine_runtime_manage",
   "agent_display",
 ]);
 
@@ -1520,15 +1520,15 @@ function activeNativeToolNames(runtime: "alpine" | "termux"): string[] {
 
 function allowedHostToolDefinitions(rawTools: unknown, platform: "android" | "ios"): HostToolDefinition[] {
   return normalizeHostToolDefinitions(rawTools).filter((definition) => {
-    if (!AETHER_HOST_TOOL_NAMES.has(definition.name)) return false;
+    if (!SUNSHINE_HOST_TOOL_NAMES.has(definition.name)) return false;
     if (platform === "ios") {
       return new Set([
         "browser",
-        "aether_config_get",
-        "aether_config_set",
-        "aether_skill_manage",
-        "aether_extension_manage",
-        "aether_developer_manage",
+        "sunshine_config_get",
+        "sunshine_config_set",
+        "sunshine_skill_manage",
+        "sunshine_extension_manage",
+        "sunshine_developer_manage",
       ]).has(definition.name);
     }
     return true;
@@ -1925,7 +1925,7 @@ function nativeToolDefinitions(state: AgentSessionState): ToolDefinition<any, an
 }
 
 function applyRuntimeToolResult(payload: JsonObject): void {
-  if (asString(payload.tool_name) !== "aether_runtime_manage" || asBoolean(payload.is_error, false)) return;
+  if (asString(payload.tool_name) !== "sunshine_runtime_manage" || asBoolean(payload.is_error, false)) return;
   const sessionId = asString(payload.session_id).trim();
   const state = agentSessions.get(sessionId);
   if (!state) return;
@@ -1940,7 +1940,7 @@ function applyRuntimeToolResult(payload: JsonObject): void {
   const runtime = asString(result.runtime).trim();
   if (runtime !== "alpine" && runtime !== "termux") return;
   state.runtime = runtime;
-  state.session.sessionManager.appendCustomEntry("aether_runtime", {
+  state.session.sessionManager.appendCustomEntry("sunshine_runtime", {
     runtime,
     cwd: runtime === "termux" ? state.termuxWorkspaceDirectory : state.workspaceDirectory,
   });
@@ -1982,7 +1982,7 @@ async function createSessionManager(
   if (explicitFile) return { manager: SessionManager.open(explicitFile, undefined, cwd), existed: true };
   const sessionDirectory = asString(
     payload.session_directory,
-    path.join(os.homedir(), ".aether", "agent-sessions"),
+    path.join(os.homedir(), ".sunshine", "agent-sessions"),
   );
   await fs.mkdir(sessionDirectory, { recursive: true });
   const suffix = `_${sessionId}.jsonl`;
@@ -2006,19 +2006,19 @@ function extensionUiContext(): ExtensionUIContext {
   const unsupported = async () => undefined;
   return {
     select: async (title: string, options: string[]) => {
-      const result = await requestAetherHost("pi_extension_select", { title, options });
+      const result = await requestSunshineHost("pi_extension_select", { title, options });
       return asString(result.value).trim() || undefined;
     },
     confirm: async (title: string, message: string) => {
-      const result = await requestAetherHost("pi_extension_confirm", { title, message });
+      const result = await requestSunshineHost("pi_extension_confirm", { title, message });
       return asBoolean(result.value, false);
     },
     input: async (title: string, placeholder?: string) => {
-      const result = await requestAetherHost("pi_extension_input", { title, placeholder: placeholder ?? "" });
+      const result = await requestSunshineHost("pi_extension_input", { title, placeholder: placeholder ?? "" });
       return asString(result.value) || undefined;
     },
     notify: (message: string, type?: "info" | "warning" | "error") => {
-      void requestAetherHost("pi_extension_notify", { message, type: type ?? "info" });
+      void requestSunshineHost("pi_extension_notify", { message, type: type ?? "info" });
     },
     onTerminalInput: () => () => undefined,
     setStatus: () => undefined,
@@ -2037,17 +2037,17 @@ function extensionUiContext(): ExtensionUIContext {
     setEditorComponent: () => undefined,
     getTheme: () => undefined,
     getAllThemes: () => [],
-    setTheme: () => ({ success: false, error: "Pi TUI components are unavailable in Aether." }),
+    setTheme: () => ({ success: false, error: "Pi TUI components are unavailable in Sunshine." }),
     getToolsExpanded: () => false,
     setToolsExpanded: () => undefined,
   } as unknown as ExtensionUIContext;
 }
 
-const aetherChromeExtensionFactory: ExtensionFactory = (pi) => {
+const sunshineChromeExtensionFactory: ExtensionFactory = (pi) => {
   pi.registerTool({
     name: "browser",
     label: "Browser",
-    description: "Control Aether's Chromium browser. Prefer CSS selectors and DOM-reading actions; use normalized coordinates only as a fallback.",
+    description: "Control Sunshine's Chromium browser. Prefer CSS selectors and DOM-reading actions; use normalized coordinates only as a fallback.",
     promptSnippet: "control the optional browser",
     executionMode: "sequential",
     parameters: Type.Object({
@@ -2071,7 +2071,7 @@ const aetherChromeExtensionFactory: ExtensionFactory = (pi) => {
     }),
     execute: async (_toolCallId, params, signal) => {
       if (signal?.aborted) throw new Error("Browser operation was cancelled.");
-      const result = await requestAetherHost("aether_chrome_execute", { arguments: params as JsonObject });
+      const result = await requestSunshineHost("sunshine_chrome_execute", { arguments: params as JsonObject });
       const screenshot = asString(result.screenshot_base64).trim();
       const visible = { ...result };
       delete visible.screenshot_base64;
@@ -2206,7 +2206,7 @@ async function resolveNativeExtensionSet(
   const disabledPaths = new Set(
     loadOptions.disabledExtensionPaths.map((entry) => path.resolve(entry)),
   );
-  const discoveredPaths = discoverAetherExtensionPaths(
+  const discoveredPaths = discoverSunshineExtensionPaths(
     workspaceDirectory,
     configuredExtensionPaths,
   ).filter((candidate) => !nativeExtensionPathIsDisabled(candidate, disabledPaths));
@@ -2252,7 +2252,7 @@ async function createNativeAgentSession(
     agentDir,
     settingsManager,
     additionalExtensionPaths,
-    extensionFactories: platform === "android" ? [aetherChromeExtensionFactory] : [],
+    extensionFactories: platform === "android" ? [sunshineChromeExtensionFactory] : [],
     additionalSkillPaths: stringArray(payload.skill_paths),
     appendSystemPrompt: [asString(payload.system_prompt)].filter(Boolean),
   });
@@ -2263,7 +2263,7 @@ async function createNativeAgentSession(
   if (!existed) history.forEach((message) => manager.appendMessage(message as never));
   if (existed) {
     const runtimeEntry = manager.getEntries().findLast((entry) =>
-      entry.type === "custom" && entry.customType === "aether_runtime"
+      entry.type === "custom" && entry.customType === "sunshine_runtime"
     );
     if (runtimeEntry?.type === "custom") {
       const persistedRuntime = asString(asObject(runtimeEntry.data).runtime);
@@ -2351,7 +2351,7 @@ async function listDiscoveredSkills(payload: JsonObject): Promise<JsonObject> {
   await resourceLoader.reload({
     resolveProjectTrust: async () => asBoolean(payload.workspace_trusted, true),
   });
-  const managedRoot = path.resolve(workspaceDirectory, ".aether", "skills");
+  const managedRoot = path.resolve(workspaceDirectory, ".sunshine", "skills");
   const skills = resourceLoader.getSkills().skills
     .filter((skill) => {
       const relative = path.relative(managedRoot, path.resolve(skill.filePath));
@@ -2466,7 +2466,7 @@ async function compactNativeAgentSession(id: string, payload: JsonObject): Promi
 async function navigateNativeAgentSession(id: string, payload: JsonObject): Promise<JsonObject> {
   // The AgentSession map is process-local. Reopen the persisted JSONL session
   // when the bridge was restarted, provided the caller supplies its model
-  // configuration (the normal Aether navigation path does).
+  // configuration (the normal Sunshine navigation path does).
   const state = await ensureNativeSessionForRequest(payload);
   if (!state.session.isIdle) throw new Error("Cannot navigate a busy Pi AgentSession.");
   const entryId = asString(payload.entry_id).trim();
@@ -2526,7 +2526,7 @@ async function importNativeAgentSession(payload: JsonObject): Promise<JsonObject
   }
   const sessionDirectory = asString(
     payload.session_directory,
-    path.join(os.homedir(), ".aether", "agent-sessions"),
+    path.join(os.homedir(), ".sunshine", "agent-sessions"),
   );
   await fs.mkdir(sessionDirectory, { recursive: true });
   const target = path.join(sessionDirectory, `${Date.now()}_${sessionId}.jsonl`);
@@ -2584,9 +2584,9 @@ async function runNativeAgentPrompt(
   state.currentRequestId = id;
   state.lastAccessedAt = Date.now();
   activeAborters.set(id, () => state.session.abort());
-  activeAetherOperationRequestIds.add(id);
+  activeSunshineOperationRequestIds.add(id);
   try {
-    await aetherOperationContext.run(id, () =>
+    await sunshineOperationContext.run(id, () =>
       state.session.prompt(text, { images: images.length > 0 ? images : undefined }),
     );
     await state.session.waitForIdle();
@@ -2595,7 +2595,7 @@ async function runNativeAgentPrompt(
     return message;
   } finally {
     activeAborters.delete(id);
-    activeAetherOperationRequestIds.delete(id);
+    activeSunshineOperationRequestIds.delete(id);
     if (state.currentRequestId === id) state.currentRequestId = "";
     state.lastAccessedAt = Date.now();
   }
@@ -2909,7 +2909,7 @@ async function invokeExtensionCommand(payload: JsonObject): Promise<JsonObject> 
 
 async function installedExtensionPackagesPayload(): Promise<JsonObject> {
   return {
-    packages: (await listAetherExtensionPackages(process.cwd())).map((installedPackage) => ({
+    packages: (await listSunshineExtensionPackages(process.cwd())).map((installedPackage) => ({
       source: installedPackage.source,
       scope: installedPackage.scope,
       filtered: installedPackage.filtered,
@@ -2918,7 +2918,7 @@ async function installedExtensionPackagesPayload(): Promise<JsonObject> {
       version: installedPackage.version,
       description: installedPackage.description,
       extension_count: installedPackage.extensionCount,
-      aether_extension_count: installedPackage.aetherExtensionCount,
+      sunshine_extension_count: installedPackage.sunshineExtensionCount,
       native_entrypoint_count: installedPackage.nativeEntrypointCount,
       skill_count: installedPackage.skillCount,
       prompt_count: installedPackage.promptCount,
@@ -2932,13 +2932,13 @@ async function reloadAllExtensionSessions(
   payload: JsonObject = {},
 ): Promise<JsonObject> {
   const loadOptions = nativeExtensionLoadOptionsFromPayload(payload);
-  // Preinstalled packages can provide both Pi and Aether entrypoints. Resolve
+  // Preinstalled packages can provide both Pi and Sunshine entrypoints. Resolve
   // their npm dependencies before reloading native Pi sessions so both loaders
   // observe the same ready package tree.
-  const skipAetherExtensions = asBoolean(payload.skip_aether_extensions, false);
-  const aetherReload = skipAetherExtensions
+  const skipSunshineExtensions = asBoolean(payload.skip_sunshine_extensions, false);
+  const sunshineReload = skipSunshineExtensions
     ? { reloaded: false, errors: [] }
-    : await loadAetherAppExtensions(process.cwd(), loadOptions);
+    : await loadSunshineAppExtensions(process.cwd(), loadOptions);
   const results: JsonObject[] = [];
   for (const state of [...agentSessions.values()]) {
     const { signature: extensionSignature } = await resolveNativeExtensionSet(
@@ -2971,14 +2971,14 @@ async function reloadAllExtensionSessions(
     result.reloaded === true || result.scheduled === true
   );
   return {
-    // Aether Script extensions are reloaded independently. Keep the session
-    // operation usable when one unrelated Aether extension remains broken; its
-    // details are still returned in aether_reload.errors for diagnostics.
+    // Sunshine Script extensions are reloaded independently. Keep the session
+    // operation usable when one unrelated Sunshine extension remains broken; its
+    // details are still returned in sunshine_reload.errors for diagnostics.
     succeeded: sessionReloadSucceeded,
     session_count: results.length,
     sessions: results,
-    aether_reload: aetherReload,
-    aether: skipAetherExtensions ? {} : await aetherAppExtensionSnapshot(),
+    sunshine_reload: sunshineReload,
+    sunshine: skipSunshineExtensions ? {} : await sunshineAppExtensionSnapshot(),
   };
 }
 
@@ -2999,7 +2999,7 @@ function nativeExtensionLoadOptionsFromPayload(payload: JsonObject): {
 
 async function installExtensionPackage(payload: JsonObject): Promise<JsonObject> {
   const source = asString(payload.source).trim();
-  await installAetherExtensionPackage(process.cwd(), source);
+  await installSunshineExtensionPackage(process.cwd(), source);
   return {
     installed: true,
     source,
@@ -3010,7 +3010,7 @@ async function installExtensionPackage(payload: JsonObject): Promise<JsonObject>
 
 async function removeExtensionPackage(payload: JsonObject): Promise<JsonObject> {
   const source = asString(payload.source).trim();
-  const removed = await removeAetherExtensionPackage(process.cwd(), source);
+  const removed = await removeSunshineExtensionPackage(process.cwd(), source);
   return {
     removed,
     source,
@@ -3020,7 +3020,7 @@ async function removeExtensionPackage(payload: JsonObject): Promise<JsonObject> 
 
 async function updateExtensionPackage(payload: JsonObject): Promise<JsonObject> {
   const source = asString(payload.source).trim();
-  await updateAetherExtensionPackage(process.cwd(), source);
+  await updateSunshineExtensionPackage(process.cwd(), source);
   return {
     updated: true,
     source,
@@ -3029,57 +3029,57 @@ async function updateExtensionPackage(payload: JsonObject): Promise<JsonObject> 
   };
 }
 
-async function reloadAetherAppExtensionsRequest(
+async function reloadSunshineAppExtensionsRequest(
   id: string,
   payload: JsonObject,
 ): Promise<JsonObject> {
-  return runAetherOperation(id, async () => {
-    const result = await loadAetherAppExtensions(
+  return runSunshineOperation(id, async () => {
+    const result = await loadSunshineAppExtensions(
       process.cwd(),
       nativeExtensionLoadOptionsFromPayload(payload),
     );
     return {
       ...result,
-      snapshot: await aetherAppExtensionSnapshot(asObject(payload.context)),
+      snapshot: await sunshineAppExtensionSnapshot(asObject(payload.context)),
     };
   });
 }
 
-async function getAetherAppExtensionsRequest(
+async function getSunshineAppExtensionsRequest(
   id: string,
   payload: JsonObject,
 ): Promise<JsonObject> {
-  return runAetherOperation(id, async () => ({
-    snapshot: await aetherAppExtensionSnapshot(asObject(payload.context)),
+  return runSunshineOperation(id, async () => ({
+    snapshot: await sunshineAppExtensionSnapshot(asObject(payload.context)),
   }));
 }
 
-async function invokeAetherAppExtensionActionRequest(
+async function invokeSunshineAppExtensionActionRequest(
   id: string,
   payload: JsonObject,
 ): Promise<JsonObject> {
-  return runAetherOperation(id, async () => ({
-    ...(await invokeAetherAppExtensionAction(
+  return runSunshineOperation(id, async () => ({
+    ...(await invokeSunshineAppExtensionAction(
       asString(payload.extension_id),
       asString(payload.action),
       asObject(payload.args),
       asObject(payload.context),
     )),
-    snapshot: await aetherAppExtensionSnapshot(asObject(payload.context)),
+    snapshot: await sunshineAppExtensionSnapshot(asObject(payload.context)),
   }));
 }
 
-async function dispatchAetherAppExtensionEventRequest(
+async function dispatchSunshineAppExtensionEventRequest(
   id: string,
   payload: JsonObject,
 ): Promise<JsonObject> {
-  return runAetherOperation(id, async () => ({
-    ...(await dispatchAetherAppExtensionEvent(
+  return runSunshineOperation(id, async () => ({
+    ...(await dispatchSunshineAppExtensionEvent(
       asString(payload.event),
       asObject(payload.data),
       asObject(payload.context),
     )),
-    snapshot: await aetherAppExtensionSnapshot(asObject(payload.context)),
+    snapshot: await sunshineAppExtensionSnapshot(asObject(payload.context)),
   }));
 }
 
@@ -3203,28 +3203,28 @@ async function handleRequest(request: BridgeRequest): Promise<void> {
     case "reload_all_extensions":
       writeResponse(id, await reloadAllExtensionSessions(payload));
       return;
-    case "reload_aether_extensions":
-      writeResponse(id, await reloadAetherAppExtensionsRequest(id, payload));
+    case "reload_sunshine_extensions":
+      writeResponse(id, await reloadSunshineAppExtensionsRequest(id, payload));
       return;
-    case "get_aether_extensions":
-      writeResponse(id, await getAetherAppExtensionsRequest(id, payload));
+    case "get_sunshine_extensions":
+      writeResponse(id, await getSunshineAppExtensionsRequest(id, payload));
       return;
-    case "invoke_aether_extension_action":
-      writeResponse(id, await invokeAetherAppExtensionActionRequest(id, payload));
+    case "invoke_sunshine_extension_action":
+      writeResponse(id, await invokeSunshineAppExtensionActionRequest(id, payload));
       return;
-    case "dispatch_aether_extension_event":
-      writeResponse(id, await dispatchAetherAppExtensionEventRequest(id, payload));
+    case "dispatch_sunshine_extension_event":
+      writeResponse(id, await dispatchSunshineAppExtensionEventRequest(id, payload));
       return;
-    case "subscribe_aether_extensions":
-      aetherSubscriberRequestIds.add(id);
-      writeEvent(id, "aether_invalidated", { subscribed: true });
+    case "subscribe_sunshine_extensions":
+      sunshineSubscriberRequestIds.add(id);
+      writeEvent(id, "sunshine_invalidated", { subscribed: true });
       return;
-    case "unsubscribe_aether_extensions":
-      aetherSubscriberRequestIds.delete(asString(payload.request_id, id));
+    case "unsubscribe_sunshine_extensions":
+      sunshineSubscriberRequestIds.delete(asString(payload.request_id, id));
       writeResponse(id, { unsubscribed: true });
       return;
-    case "aether_host_result":
-      writeResponse(id, { accepted: resolveAetherHostCall(payload) });
+    case "sunshine_host_result":
+      writeResponse(id, { accepted: resolveSunshineHostCall(payload) });
       return;
     case "steer":
       writeResponse(id, await steerNativeAgentSession(payload));

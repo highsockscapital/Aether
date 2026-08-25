@@ -1,7 +1,7 @@
 //
 //  TerminalInputView.swift
 //  MinisApp
-//  Adapted for Aether from OpenMinis (GPL-3.0).
+//  Adapted for Sunshine from OpenMinis (GPL-3.0).
 //
 //  UIViewRepresentable keyboard input capture using UITextInput.
 //  Supports CJK (Chinese/Japanese/Korean) input methods by handling

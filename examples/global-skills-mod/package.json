@@ -1,8 +1,8 @@
 {
-  "name": "aether-global-skills-mod",
+  "name": "sunshine-global-skills-mod",
   "version": "1.0.0",
-  "description": "Minecraft-style replacement of Aether's native skill tray with persistent global defaults.",
-  "aether": {
+  "description": "Minecraft-style replacement of Sunshine's native skill tray with persistent global defaults.",
+  "sunshine": {
     "api": {
       "min": 2,
       "max": 2
@@ -12,6 +12,6 @@
     ]
   },
   "devDependencies": {
-    "@baimoqilin/aether-extension-api": "^2.0.0"
+    "@highsockscapital/sunshine-extension-api": "^2.0.0"
   }
 }

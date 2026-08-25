@@ -1,7 +1,7 @@
 //
 //  TerminalBuffer.swift
 //  MinisApp
-//  Adapted for Aether from OpenMinis (GPL-3.0).
+//  Adapted for Sunshine from OpenMinis (GPL-3.0).
 //
 //  Terminal screen buffer with character grid, scrollback, and cursor management
 //

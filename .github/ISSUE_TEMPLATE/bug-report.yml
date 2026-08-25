@@ -1,5 +1,5 @@
 name: Bug report / 问题反馈
-description: Report a problem in Aether / 反馈 Aether 中的问题
+description: Report a problem in Sunshine / 反馈 Sunshine 中的问题
 title: "[BUG] "
 labels:
   - bug
@@ -14,7 +14,7 @@ body:
           required: true
         - label: I have searched existing issues and found no relevant issues. / 我已搜索过 Issue，且未找到相关内容。
           required: true
-        - label: I have updated to the latest Aether Nightly, and the bug still occurs. / 我已更新至最新 Aether Nightly，且该 Bug 仍然存在。
+        - label: I have updated to the latest Sunshine Nightly, and the bug still occurs. / 我已更新至最新 Sunshine Nightly，且该 Bug 仍然存在。
           required: true
         - label: I have removed secrets and personal information. / 我已移除密钥和个人信息。
           required: true
@@ -60,7 +60,7 @@ body:
       label: Environment / 运行环境
       description: Include relevant details only. / 只填写相关信息。
       value: |
-        - Aether version / Aether 版本:
+        - Sunshine version / Sunshine 版本:
         - Device/model / 设备型号:
         - OS version / 系统版本:
         - LLM provider, model, or endpoint type (if relevant) / LLM 服务商、模型或端点类型（如相关）:

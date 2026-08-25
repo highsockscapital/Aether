@@ -1,16 +1,16 @@
 {
-  "name": "@baimoqilin/aether-extension-api",
+  "name": "@highsockscapital/sunshine-extension-api",
   "version": "2.0.0",
-  "description": "TypeScript declarations for trusted Aether Script Extensions.",
+  "description": "TypeScript declarations for trusted Sunshine Script Extensions.",
   "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Zhou-Shilin/Aether.git",
+    "url": "git+https://github.com/highsockscapital/Sunshine.git",
     "directory": "packages/extension-api"
   },
-  "homepage": "https://github.com/Zhou-Shilin/Aether#readme",
+  "homepage": "https://github.com/highsockscapital/Sunshine#readme",
   "bugs": {
-    "url": "https://github.com/Zhou-Shilin/Aether/issues"
+    "url": "https://github.com/highsockscapital/Sunshine/issues"
   },
   "type": "module",
   "types": "./dist/index.d.ts",

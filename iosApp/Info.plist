@@ -34,7 +34,7 @@
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Aether accesses local network services only when you connect a self-hosted AI provider or MCP server.</string>
+	<string>Sunshine accesses local network services only when you connect a self-hosted AI provider or MCP server.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>processing</string>

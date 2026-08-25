@@ -2,16 +2,16 @@
 
 ## OpenMinis/ish-arm64
 
-Aether's iOS runtime integrates [OpenMinis/ish-arm64](https://github.com/OpenMinis/ish-arm64)
+Sunshine's iOS runtime integrates [OpenMinis/ish-arm64](https://github.com/OpenMinis/ish-arm64)
 using commit `89269e6fef7ab7aa61b133deae90d78e34a09ed1` as its upstream base.
 
 - License: GNU General Public License v3.0. See `third_party/ish-arm64/LICENSE.md`.
 - iOS distribution exception and additional terms: see
   `third_party/ish-arm64/LICENSE.IOS`.
 - Corresponding source: the complete pinned source, its pinned submodules, and
-  Aether's changes are included in this repository under
+  Sunshine's changes are included in this repository under
   `third_party/ish-arm64`.
-- Aether integration changes against the upstream base:
+- Sunshine integration changes against the upstream base:
   - `asbestos/guest-arm64/gadgets-aarch64/math.S` and
     `asbestos/guest-arm64/gen.c` add missing ARM64 SIMD conversion and move
     instructions needed by the bundled Alpine and Node runtime.
@@ -25,7 +25,7 @@ using commit `89269e6fef7ab7aa61b133deae90d78e34a09ed1` as its upstream base.
 
 Release archives must include this notice, both iSH license files, the upstream
 base commit above, the complete modified corresponding source, and a durable
-link to the corresponding Aether source tag.
+link to the corresponding Sunshine source tag.
 
 ## Alpine Linux
 

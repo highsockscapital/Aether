@@ -17,14 +17,14 @@ import { Container, Key, matchesKey, type SettingItem, SettingsList, Spacer, Tex
 import { Type } from "@sinclair/typebox";
 import { abortable } from "./abortable.js";
 import {
-  appendAetherSubagentMessage,
+  appendSunshineSubagentMessage,
   type MentionDispatchResult,
   registerSubagentsBridge,
   type SubagentSnapshotAgent,
   type SubagentsPiBridge,
   type SubagentsSnapshot,
   unregisterSubagentsBridge,
-} from "./aether.js";
+} from "./sunshine.js";
 import { hasAgentBadge, renderAgentName } from "./agent-color.js";
 import { buildNewAgentFile, disableInContent, enableInContent, isEmptyStub, locateAgentFile, personalAgentsDir, projectAgentsDir, serializeAgentFile } from "./agent-file-toggle.js";
 import { AgentManager } from "./agent-manager.js";
@@ -386,7 +386,7 @@ export default function (pi: ExtensionAPI) {
       display: true,
       details,
     }, { deliverAs: "followUp", triggerTurn: true });
-    void appendAetherSubagentMessage("subagent-notification", { ...details }, notification + footer);
+    void appendSunshineSubagentMessage("subagent-notification", { ...details }, notification + footer);
   }
 
   function sendIndividualNudge(record: AgentRecord) {
@@ -425,7 +425,7 @@ export default function (pi: ExtensionAPI) {
           display: true,
           details,
         }, { deliverAs: "followUp", triggerTurn: true });
-        void appendAetherSubagentMessage(
+        void appendSunshineSubagentMessage(
           "subagent-notification",
           { ...details },
           `Background agent group completed: ${label}\n\n${notifications}\n\nUse get_subagent_result for full output.`,
@@ -948,8 +948,8 @@ export default function (pi: ExtensionAPI) {
     pendingNudges.clear();
     fleet.dispose();
     manager.dispose();
-    clearInterval(aetherRefreshTimer);
-    unregisterSubagentsBridge(aetherBridge);
+    clearInterval(sunshineRefreshTimer);
+    unregisterSubagentsBridge(sunshineBridge);
   });
 
   // Live widget: show running agents above editor.
@@ -3022,12 +3022,12 @@ Write the file using the write tool. Only write the file, nothing else.`;
     ctx.ui.notify(message, level);
   }
 
-  // ---- Aether Script Mod bridge ---------------------------------------------
-  // Aether loads src/aether.ts in a separate jiti loader. It reads live state
+  // ---- Sunshine Script Mod bridge ---------------------------------------------
+  // Sunshine loads src/sunshine.ts in a separate jiti loader. It reads live state
   // and calls controls through this globalThis handle. The timer only asks
-  // Aether to re-render; rendering itself reads getSnapshot() directly, so
+  // Sunshine to re-render; rendering itself reads getSnapshot() directly, so
   // per-second refreshes do not persist anything.
-  function buildAetherSnapshot(): SubagentsSnapshot {
+  function buildSunshineSnapshot(): SubagentsSnapshot {
     const emptyActivity = new Map<string, string>();
     const agents: SubagentSnapshotAgent[] = manager.listAgents()
       .filter((record) => record.parentAgentId === undefined)
@@ -3081,7 +3081,7 @@ Write the file using the write tool. Only write the file, nothing else.`;
     };
   }
 
-  function toggleAgentFromAether(name: string): { ok: boolean; message: string } {
+  function toggleAgentFromSunshine(name: string): { ok: boolean; message: string } {
     const cfg = getAgentConfig(name);
     if (!cfg) return { ok: false, message: `Agent not found: ${name}` };
     const file = locateAgentFile(name, cfg.sourcePath);
@@ -3127,8 +3127,8 @@ Write the file using the write tool. Only write the file, nothing else.`;
     return { ok: true, message: `Disabled ${name} (${targetPath})` };
   }
 
-  const aetherBridge: SubagentsPiBridge = {
-    getSnapshot: buildAetherSnapshot,
+  const sunshineBridge: SubagentsPiBridge = {
+    getSnapshot: buildSunshineSnapshot,
     getConversation: (id: string) => {
       const record = manager.getRecord(id);
       return record?.session ? getAgentConversation(record.session) : undefined;
@@ -3149,20 +3149,20 @@ Write the file using the write tool. Only write the file, nothing else.`;
       return { ok: true, message: outcome.message };
     },
     reloadAgents: () => reloadCustomAgents(),
-    toggleAgent: toggleAgentFromAether,
+    toggleAgent: toggleAgentFromSunshine,
     dispatchMention: async (text: string): Promise<MentionDispatchResult> => {
       if (!currentCtx) return { action: "continue" };
       return handleMentionInput({ text }, currentCtx, true);
     },
   };
-  registerSubagentsBridge(aetherBridge);
+  registerSubagentsBridge(sunshineBridge);
 
-  const aetherRefreshTimer = setInterval(() => {
-    if (aetherBridge.api && manager.hasRunning()) {
-      aetherBridge.api.invalidate?.();
+  const sunshineRefreshTimer = setInterval(() => {
+    if (sunshineBridge.api && manager.hasRunning()) {
+      sunshineBridge.api.invalidate?.();
     }
   }, 1000);
-  aetherRefreshTimer.unref?.();
+  sunshineRefreshTimer.unref?.();
 
   pi.registerCommand("agents", {
     description: "Manage agents",

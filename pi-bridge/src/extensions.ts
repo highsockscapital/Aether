@@ -30,9 +30,9 @@ import * as typeboxCompile from "typebox/compile";
 import * as typeboxValue from "typebox/value";
 import { loadExtensionFromFactory } from "../node_modules/@earendil-works/pi-coding-agent/dist/core/extensions/loader.js";
 import {
-  aetherAppExtensionCountForManifest,
-  aetherExtensionApiModule,
-} from "./aether-extensions.js";
+  sunshineAppExtensionCountForManifest,
+  sunshineExtensionApiModule,
+} from "./sunshine-extensions.js";
 import {
   ensureExtensionPackageDependencies,
   packageRootForExtensionPath,
@@ -48,7 +48,7 @@ const INDEX_FILE_NAMES = [
   "index.cjs",
 ];
 const PI_AGENT_DIRECTORY = path.join(os.homedir(), ".pi", "agent");
-const AETHER_JITI_CACHE = path.join(os.homedir(), ".aether", "cache", "jiti");
+const SUNSHINE_JITI_CACHE = path.join(os.homedir(), ".sunshine", "cache", "jiti");
 
 const virtualModules: Record<string, unknown> = {
   typebox,
@@ -69,31 +69,31 @@ const virtualModules: Record<string, unknown> = {
   "@mariozechner/pi-ai/oauth": piAiOauth,
   "@mariozechner/pi-coding-agent": piCodingAgent,
   "@mariozechner/pi-tui": piTui,
-  "@baimoqilin/aether-extension-api": aetherExtensionApiModule,
-  "@aether/extension-api": aetherExtensionApiModule,
-  "@aether/android-extension": aetherExtensionApiModule,
+  "@highsockscapital/sunshine-extension-api": sunshineExtensionApiModule,
+  "@sunshine/extension-api": sunshineExtensionApiModule,
+  "@sunshine/android-extension": sunshineExtensionApiModule,
 };
 
-export interface AetherExtensionLoadError {
+export interface SunshineExtensionLoadError {
   path: string;
   error: string;
 }
 
-export interface AetherExtensionRuntime {
+export interface SunshineExtensionRuntime {
   runner: ExtensionRunner;
   runtime: ExtensionRuntime;
   sessionManager: SessionManager;
   modelRegistry: ModelRegistry;
   paths: string[];
-  errors: AetherExtensionLoadError[];
+  errors: SunshineExtensionLoadError[];
 }
 
-export interface AetherExtensionLoadOptions {
+export interface SunshineExtensionLoadOptions {
   disabledExtensionPaths?: string[];
   disabledPackageSources?: string[];
 }
 
-export interface AetherInstalledExtensionPackage {
+export interface SunshineInstalledExtensionPackage {
   source: string;
   scope: "user" | "project";
   filtered: boolean;
@@ -102,7 +102,7 @@ export interface AetherInstalledExtensionPackage {
   version: string;
   description: string;
   extensionCount: number;
-  aetherExtensionCount: number;
+  sunshineExtensionCount: number;
   nativeEntrypointCount: number;
   skillCount: number;
   promptCount: number;
@@ -110,7 +110,7 @@ export interface AetherInstalledExtensionPackage {
   skillPaths: string[];
 }
 
-type AetherConfiguredPackage = ReturnType<
+type SunshineConfiguredPackage = ReturnType<
   DefaultPackageManager["listConfiguredPackages"]
 >[number];
 
@@ -152,7 +152,7 @@ function packageExtensionPaths(directory: string): string[] {
       if (paths.length > 0) return paths;
     }
   }
-  if (aetherAppExtensionCountForManifest(manifest) > 0) return [];
+  if (sunshineAppExtensionCountForManifest(manifest) > 0) return [];
   for (const name of INDEX_FILE_NAMES) {
     const candidate = path.join(directory, name);
     if (fs.existsSync(candidate)) return [candidate];
@@ -186,14 +186,14 @@ function extensionEntriesInRoot(root: string): string[] {
     .flatMap((entry) => extensionEntriesAt(path.join(root, entry.name)));
 }
 
-export function discoverAetherExtensionPaths(
+export function discoverSunshineExtensionPaths(
   cwd: string,
   configuredPaths: string[] = [],
 ): string[] {
   const roots = [
     path.join(os.homedir(), ".pi", "agent", "extensions"),
     path.join(cwd, ".pi", "extensions"),
-    path.join(os.homedir(), ".aether", "extensions"),
+    path.join(os.homedir(), ".sunshine", "extensions"),
   ];
   const discovered = [
     ...roots.flatMap(extensionEntriesInRoot),
@@ -226,7 +226,7 @@ export async function discoverPackageExtensionPaths(
     .map((entry) => path.resolve(entry.path));
 }
 
-function packageManifest(configuredPackage: AetherConfiguredPackage): Record<string, unknown> | undefined {
+function packageManifest(configuredPackage: SunshineConfiguredPackage): Record<string, unknown> | undefined {
   if (!configuredPackage.installedPath) return undefined;
   return readJsonFile(path.join(configuredPackage.installedPath, "package.json"));
 }
@@ -243,9 +243,9 @@ function manifestExtensionCount(manifest: Record<string, unknown> | undefined): 
 function manifestNativeEntrypointCount(
   manifest: Record<string, unknown> | undefined,
 ): number {
-  const aether = manifest?.aether;
-  if (!aether || typeof aether !== "object" || Array.isArray(aether)) return 0;
-  const native = (aether as Record<string, unknown>).native;
+  const sunshine = manifest?.sunshine;
+  if (!sunshine || typeof sunshine !== "object" || Array.isArray(sunshine)) return 0;
+  const native = (sunshine as Record<string, unknown>).native;
   if (!native || typeof native !== "object" || Array.isArray(native)) return 0;
   const nativeManifest = native as Record<string, unknown>;
   if (nativeManifest.enabled === false) return 0;
@@ -263,7 +263,7 @@ function manifestNativeEntrypointCount(
     countConfigured(nativeManifest.entrypoint);
 }
 
-interface AetherPackageResources {
+interface SunshinePackageResources {
   extensions: string[];
   skills: string[];
   prompts: string[];
@@ -273,7 +273,7 @@ interface AetherPackageResources {
 function packageResourcesForSource(
   source: string,
   resolved: Awaited<ReturnType<DefaultPackageManager["resolve"]>>,
-): AetherPackageResources {
+): SunshinePackageResources {
   const pathsFor = (
     entries: Awaited<ReturnType<DefaultPackageManager["resolve"]>>["extensions"],
   ): string[] =>
@@ -289,9 +289,9 @@ function packageResourcesForSource(
 }
 
 function installedPackagePayload(
-  configuredPackage: AetherConfiguredPackage,
-  resources: AetherPackageResources,
-): AetherInstalledExtensionPackage {
+  configuredPackage: SunshineConfiguredPackage,
+  resources: SunshinePackageResources,
+): SunshineInstalledExtensionPackage {
   const manifest = packageManifest(configuredPackage);
   return {
     source: configuredPackage.source,
@@ -304,7 +304,7 @@ function installedPackagePayload(
     version: typeof manifest?.version === "string" ? manifest.version : "",
     description: typeof manifest?.description === "string" ? manifest.description : "",
     extensionCount: resources.extensions.length || manifestExtensionCount(manifest),
-    aetherExtensionCount: aetherAppExtensionCountForManifest(manifest),
+    sunshineExtensionCount: sunshineAppExtensionCountForManifest(manifest),
     nativeEntrypointCount: manifestNativeEntrypointCount(manifest),
     skillCount: resources.skills.length,
     promptCount: resources.prompts.length,
@@ -313,9 +313,9 @@ function installedPackagePayload(
   };
 }
 
-export async function listAetherExtensionPackages(
+export async function listSunshineExtensionPackages(
   cwd: string,
-): Promise<AetherInstalledExtensionPackage[]> {
+): Promise<SunshineInstalledExtensionPackage[]> {
   const packageManager = createPackageManager(cwd);
   const configuredPackages = packageManager
     .listConfiguredPackages()
@@ -340,14 +340,14 @@ function requireNpmPackageSource(source: string): string {
   return normalized;
 }
 
-export async function installAetherExtensionPackage(
+export async function installSunshineExtensionPackage(
   cwd: string,
   source: string,
 ): Promise<void> {
   await createPackageManager(cwd).installAndPersist(requireNpmPackageSource(source));
 }
 
-export async function removeAetherExtensionPackage(
+export async function removeSunshineExtensionPackage(
   cwd: string,
   source: string,
 ): Promise<boolean> {
@@ -384,7 +384,7 @@ export async function removeAetherExtensionPackage(
   return true;
 }
 
-export async function updateAetherExtensionPackage(
+export async function updateSunshineExtensionPackage(
   cwd: string,
   source: string,
 ): Promise<void> {
@@ -394,7 +394,7 @@ export async function updateAetherExtensionPackage(
 async function loadFactory(extensionPath: string): Promise<ExtensionFactory> {
   const jiti = createJiti(import.meta.url, {
     moduleCache: false,
-    fsCache: AETHER_JITI_CACHE,
+    fsCache: SUNSHINE_JITI_CACHE,
     tryNative: false,
     virtualModules,
   });
@@ -405,31 +405,31 @@ async function loadFactory(extensionPath: string): Promise<ExtensionFactory> {
   return factory as ExtensionFactory;
 }
 
-export async function loadAetherExtensions(
+export async function loadSunshineExtensions(
   cwd: string,
   configuredPaths: string[] = [],
-  loadOptions: AetherExtensionLoadOptions = {},
-): Promise<AetherExtensionRuntime> {
+  loadOptions: SunshineExtensionLoadOptions = {},
+): Promise<SunshineExtensionRuntime> {
   const disabledExtensionPaths = new Set(
     (loadOptions.disabledExtensionPaths ?? []).map((entry) => path.resolve(entry)),
   );
   const disabledPackageSources = new Set(loadOptions.disabledPackageSources ?? []);
   const paths = [
-    ...discoverAetherExtensionPaths(cwd, configuredPaths)
+    ...discoverSunshineExtensionPaths(cwd, configuredPaths)
       .filter((entry) => !isPathDisabled(entry, disabledExtensionPaths)),
     ...(await discoverPackageExtensionPaths(cwd, disabledPackageSources)),
   ].filter((entry, index, entries) => entries.indexOf(entry) === index);
   const runtime = createExtensionRuntime();
   const eventBus = createEventBus();
   const extensions: Extension[] = [];
-  const errors: AetherExtensionLoadError[] = [];
+  const errors: SunshineExtensionLoadError[] = [];
   const installedDependencyRoots = new Set<string>();
 
   for (const extensionPath of paths) {
     try {
       const packageRoot = packageRootForExtensionPath(
         extensionPath,
-        path.join(os.homedir(), ".aether", "extensions"),
+        path.join(os.homedir(), ".sunshine", "extensions"),
       );
       if (packageRoot && !installedDependencyRoots.has(packageRoot)) {
         installedDependencyRoots.add(packageRoot);
@@ -475,7 +475,7 @@ export async function loadAetherExtensions(
   };
 }
 
-export function extensionTools(extensionRuntime: AetherExtensionRuntime) {
+export function extensionTools(extensionRuntime: SunshineExtensionRuntime) {
   return wrapRegisteredTools(
     extensionRuntime.runner.getAllRegisteredTools(),
     extensionRuntime.runner,

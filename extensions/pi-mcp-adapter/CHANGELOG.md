@@ -8,12 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Added Aether `registerToolTitle` mappings for the `mcp` gateway and `mcpScript` tools, plus dynamic running/completed titles for every direct MCP tool registered in the session, on Aether builds that support the Script API.
+- Added Sunshine `registerToolTitle` mappings for the `mcp` gateway and `mcpScript` tools, plus dynamic running/completed titles for every direct MCP tool registered in the session, on Sunshine builds that support the Script API.
 
-## [2.26.0-aether.1] - 2026-08-17
+## [2.26.0-sunshine.1] - 2026-08-17
 
 ### Added
-- Added an Aether Script API v2 integration with an MCP settings page for creating, editing, renaming, removing, reconnecting, and OAuth-authenticating MCP servers. The page is built entirely from Aether's generic extension setting controls (item cards, empty states, action rows, and categories); all MCP-specific configuration remains in this extension. Stdio, Streamable HTTP, SSE, Unix socket, MCP protocol-era negotiation, and the adapter's per-server options are editable and written to the same Pi `mcp.json` used by the extension.
+- Added an Sunshine Script API v2 integration with an MCP settings page for creating, editing, renaming, removing, reconnecting, and OAuth-authenticating MCP servers. The page is built entirely from Sunshine's generic extension setting controls (item cards, empty states, action rows, and categories); all MCP-specific configuration remains in this extension. Stdio, Streamable HTTP, SSE, Unix socket, MCP protocol-era negotiation, and the adapter's per-server options are editable and written to the same Pi `mcp.json` used by the extension.
 
 ### Fixed
 - Recovered MCP gateway requests nested inside proxy `args` instead of silently showing status, and now rejects invalid nested gateway requests with guidance. Thanks to [@ibrmora](https://github.com/ibrmora) for #363.

@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { DefaultPackageManager } from "../node_modules/@earendil-works/pi-coding-agent/dist/core/package-manager.js";
 import { SettingsManager } from "../node_modules/@earendil-works/pi-coding-agent/dist/core/settings-manager.js";
 import { loadSkills } from "../node_modules/@earendil-works/pi-coding-agent/dist/core/skills.js";
-import { aetherAppExtensionCountForManifest } from "./aether-extensions.js";
+import { sunshineAppExtensionCountForManifest } from "./sunshine-extensions.js";
 
 const PI_AGENT_DIRECTORY = path.join(os.homedir(), ".pi", "agent");
 
@@ -27,7 +27,7 @@ export interface InstalledExtensionPackage {
   version: string;
   description: string;
   extensionCount: number;
-  aetherExtensionCount: number;
+  sunshineExtensionCount: number;
   nativeEntrypointCount: number;
   skillCount: number;
   promptCount: number;
@@ -74,7 +74,7 @@ export async function listDiscoveredSkills(
   scope: string;
   origin: string;
 }>> {
-  const managedRoot = path.resolve(cwd, ".aether", "skills");
+  const managedRoot = path.resolve(cwd, ".sunshine", "skills");
   const resolved = await createPackageManager(cwd, agentDirectory, true).resolve();
   const resources = resolved.skills.filter((resource) => {
     if (!resource.enabled || resource.metadata.origin === "package") return false;
@@ -127,9 +127,9 @@ function manifestExtensionCount(manifest: Record<string, unknown> | undefined): 
 }
 
 function manifestNativeEntrypointCount(manifest: Record<string, unknown> | undefined): number {
-  const aether = manifest?.aether;
-  if (!aether || typeof aether !== "object" || Array.isArray(aether)) return 0;
-  const native = (aether as Record<string, unknown>).native;
+  const sunshine = manifest?.sunshine;
+  if (!sunshine || typeof sunshine !== "object" || Array.isArray(sunshine)) return 0;
+  const native = (sunshine as Record<string, unknown>).native;
   if (!native || typeof native !== "object" || Array.isArray(native)) return 0;
   const nativeManifest = native as Record<string, unknown>;
   if (nativeManifest.enabled === false) return 0;
@@ -172,7 +172,7 @@ function installedPackagePayload(
     version: typeof manifest?.version === "string" ? manifest.version : "",
     description: typeof manifest?.description === "string" ? manifest.description : "",
     extensionCount: resources.extensions.length || manifestExtensionCount(manifest),
-    aetherExtensionCount: aetherAppExtensionCountForManifest(manifest),
+    sunshineExtensionCount: sunshineAppExtensionCountForManifest(manifest),
     nativeEntrypointCount: manifestNativeEntrypointCount(manifest),
     skillCount: resources.skills.length,
     promptCount: resources.prompts.length,

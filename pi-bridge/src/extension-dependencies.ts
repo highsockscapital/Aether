@@ -8,7 +8,7 @@ const DEPENDENCY_FIELDS = [
   "optionalDependencies",
   "peerDependencies",
 ] as const;
-const INSTALL_MARKER_NAME = ".aether-install-complete";
+const INSTALL_MARKER_NAME = ".sunshine-install-complete";
 const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
 const pendingInstalls = new Map<string, Promise<void>>();
 
@@ -51,7 +51,7 @@ function isWithin(root: string, candidate: string): boolean {
   );
 }
 
-/** Find the package root for a bundled/imported entry without crossing the Aether root. */
+/** Find the package root for a bundled/imported entry without crossing the Sunshine root. */
 export function packageRootForExtensionPath(
   extensionPath: string,
   extensionRoot: string,

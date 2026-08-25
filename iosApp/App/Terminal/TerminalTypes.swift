@@ -1,7 +1,7 @@
 //
 //  TerminalTypes.swift
 //  MinisApp
-//  Adapted for Aether from OpenMinis (GPL-3.0).
+//  Adapted for Sunshine from OpenMinis (GPL-3.0).
 //
 //  Data structures for the terminal emulator
 //

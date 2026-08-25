@@ -3,7 +3,7 @@ set -euo pipefail
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ish_root="$repo_root/third_party/ish-arm64"
-build_dir="${TARGET_TEMP_DIR:?}/aether-ish-meson"
+build_dir="${TARGET_TEMP_DIR:?}/sunshine-ish-meson"
 mkdir -p "$build_dir"
 
 export PATH="/opt/homebrew/opt/llvm/bin:/usr/local/opt/llvm/bin:$PATH:/opt/homebrew/bin:/usr/local/bin"
@@ -20,7 +20,7 @@ if ! meson introspect --buildoptions "$build_dir" >/dev/null 2>&1; then
         arch=${NATIVE_ARCH_ACTUAL:-arm64}
     fi
     if [ "$arch" != arm64 ]; then
-        echo "AetherIshRuntime currently supports only arm64 Apple targets (got $arch)." >&2
+        echo "SunshineIshRuntime currently supports only arm64 Apple targets (got $arch)." >&2
         exit 1
     fi
 
@@ -33,7 +33,7 @@ if ! meson introspect --buildoptions "$build_dir" >/dev/null 2>&1; then
             target_triple="arm64-apple-ios${IPHONEOS_DEPLOYMENT_TARGET:-17.0}-simulator"
             ;;
         *)
-            echo "Unsupported Apple SDK for AetherIshRuntime: $sdk" >&2
+            echo "Unsupported Apple SDK for SunshineIshRuntime: $sdk" >&2
             exit 1
             ;;
     esac

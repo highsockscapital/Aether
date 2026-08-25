@@ -8,23 +8,23 @@
 
 ## About this repository
 
-This is the **Aether-enabled fork** of [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter) by the [Aether](https://aether.baimoqilin.com) team. It tracks the upstream project and adds first-class support for running inside Aether, the mobile AI agent built on the Pi Coding Agent core:
+This is the **Sunshine-enabled fork** of [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter) by the [Sunshine](https://sunshine.highsockscapital.com) team. It tracks the upstream project and adds first-class support for running inside Sunshine, the mobile AI agent built on the Pi Coding Agent core:
 
-- **Aether Script Mod** (`aether.ts` and `aether-bridge.ts`) — a dedicated native **MCP Settings page** composed entirely from Aether's generic extension setting controls (item cards, empty states, action rows, and categories) to create, edit, rename, remove, reconnect, and OAuth-authenticate MCP servers.
+- **Sunshine Script Mod** (`sunshine.ts` and `sunshine-bridge.ts`) — a dedicated native **MCP Settings page** composed entirely from Sunshine's generic extension setting controls (item cards, empty states, action rows, and categories) to create, edit, rename, remove, reconnect, and OAuth-authenticate MCP servers.
 - **Semantic tool titles** — registers human-friendly running and completed titles for `mcp`, `mcpScript`, and every direct MCP tool registered in the session.
 
-The upstream project remains the source of truth for MCP protocol support and Pi-side behavior; this repository layers the Aether UI and runtime integration on top and stays rebased on upstream releases.
+The upstream project remains the source of truth for MCP protocol support and Pi-side behavior; this repository layers the Sunshine UI and runtime integration on top and stays rebased on upstream releases.
 
-## Aether integration
+## Sunshine integration
 
-When installed in Aether, this package loads a Script Extension (no Native Mod required). The Script Extension adds a native MCP settings page in Aether Settings using only Aether's generic extension controls:
+When installed in Sunshine, this package loads a Script Extension (no Native Mod required). The Script Extension adds a native MCP settings page in Sunshine Settings using only Sunshine's generic extension controls:
 
 - **Server cards list**: A live list of configured MCP servers with status indicators, tool counts, enable/disable switches, and expandable cards for inspecting tools, resources, and prompts.
 - **Visual server editor**: Form-based editing for Stdio (`command`, `args`, `env`, `cwd`), HTTP (Streamable HTTP, SSE, Bearer tokens, dynamic/static OAuth, per-request headers), Unix sockets, and protocol-era negotiation.
 - **Interactive controls & OAuth**: One-tap tool inspection, server reconnection, and direct authorization URL handling with callback code submission.
-- **Semantic tool titles**: Direct MCP tools and gateway calls display live semantic status titles in Aether tool cards via `aether.registerToolTitle`.
+- **Semantic tool titles**: Direct MCP tools and gateway calls display live semantic status titles in Sunshine tool cards via `sunshine.registerToolTitle`.
 
-Settings are written directly and atomically to the standard Pi `mcp.json` config file, preserving CLI and GUI parity. Script changes hot-reload without restarting Aether.
+Settings are written directly and atomically to the standard Pi `mcp.json` config file, preserving CLI and GUI parity. Script changes hot-reload without restarting Sunshine.
 
 [![npm version](https://img.shields.io/npm/v/pi-mcp-adapter?style=for-the-badge)](https://www.npmjs.com/package/pi-mcp-adapter)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -50,9 +50,9 @@ pi install npm:pi-mcp-adapter
 
 Restart Pi after installation.
 
-### In Aether
+### In Sunshine
 
-Download the release package from the [Releases page](https://github.com/AetherExtensions/pi-mcp-adapter/releases) of this repository, then import it in Aether via **Settings → Extensions → Import extension**. The package includes the Pi extension and the Aether Script Mod in one zip; Script updates hot-reload without restarting Aether.
+Download the release package from the [Releases page](https://github.com/SunshineExtensions/pi-mcp-adapter/releases) of this repository, then import it in Sunshine via **Settings → Extensions → Import extension**. The package includes the Pi extension and the Sunshine Script Mod in one zip; Script updates hot-reload without restarting Sunshine.
 
 ## What happens on first run
 

@@ -6,5 +6,5 @@
     android:insetBottom="18dp">
     <bitmap
         android:gravity="fill"
-        android:src="@drawable/aether_mark" />
+        android:src="@drawable/sunshine_mark" />
 </inset>

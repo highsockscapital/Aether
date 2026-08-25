@@ -1,4 +1,4 @@
-import AetherShared
+import SunshineShared
 import Charts
 import Foundation
 import SwiftUI
@@ -258,7 +258,7 @@ private struct NativeGeneralSettingsView: View {
             } header: {
                 Text(model.text("Language", "语言"))
             } footer: {
-                Text(model.text("Choose the language used throughout Aether.", "选择 Aether 使用的界面语言。"))
+                Text(model.text("Choose the language used throughout Sunshine.", "选择 Sunshine 使用的界面语言。"))
             }
             Section {
                 Picker(model.text("Theme", "主题"), selection: themeBinding) {
@@ -309,7 +309,7 @@ private struct NativePersonalizationSettingsView: View {
             } header: {
                 Text(model.text("Custom instructions", "自定义指令"))
             } footer: {
-                Text(model.text("These instructions are included when Aether starts an agent turn.", "这些指令会在 Aether 开始 Agent 任务时加入上下文。"))
+                Text(model.text("These instructions are included when Sunshine starts an agent turn.", "这些指令会在 Sunshine 开始 Agent 任务时加入上下文。"))
             }
         }
         .navigationTitle(model.text("Personalization", "个性化"))
@@ -379,7 +379,7 @@ private struct NativeProviderListView: View {
                 ContentUnavailableView(
                     model.text("No providers", "尚无提供商"),
                     systemImage: "cloud",
-                    description: Text(model.text("Add a provider to choose models for Aether.", "添加提供商以便为 Aether 选择模型。"))
+                    description: Text(model.text("Add a provider to choose models for Sunshine.", "添加提供商以便为 Sunshine 选择模型。"))
                 )
             }
             ForEach(model.providers, id: \.nativeID) { provider in
@@ -554,7 +554,7 @@ private struct NativeProviderEditor: View {
             environment: Self.pairs(provider?["providerEnvironmentVariables"]),
             baseURL: provider?["baseUrl"] as? String ?? model.string(defaultDefinition, "defaultBaseUrl", fallback: "https://api.openai.com/v1"),
             modelIDs: modelIDs.joined(separator: "\n"),
-            userAgent: provider?["userAgent"] as? String ?? "Aether/1.0",
+            userAgent: provider?["userAgent"] as? String ?? "Sunshine/1.0",
             headers: Self.pairs(provider?["customHeaders"]),
             cachedModels: provider?["cachedModels"] as? [String] ?? [],
             enabledModels: Set(provider?["enabledModelIds"] as? [String] ?? modelIDs),
@@ -751,7 +751,7 @@ private struct NativeProviderEditor: View {
                     TextEditor(text: $draft.modelIDs).frame(minHeight: 80)
                 }
             } header: { wizardHeader(3) } footer: {
-                Text(model.text("Select the models Aether can use with \(model.string(definition, "displayName")).", "选择 Aether 可通过 \(model.string(definition, "displayName")) 使用的模型。"))
+                Text(model.text("Select the models Sunshine can use with \(model.string(definition, "displayName")).", "选择 Sunshine 可通过 \(model.string(definition, "displayName")) 使用的模型。"))
             }
             Section(model.text("Available Models", "可用模型")) {
                 Button { fetchModels() } label: {
@@ -1707,7 +1707,7 @@ private struct NativeAlpineSettingsView: View {
                     Button { model.perform("alpine_set_default") } label: { Label(model.text("Use as Default Runtime", "设为默认运行时"), systemImage: "checkmark.circle") }
                 }
             } footer: {
-                Text(model.text("The Alpine environment stays inside Aether's private app storage.", "Alpine 环境保存在 Aether 的私有应用存储中。"))
+                Text(model.text("The Alpine environment stays inside Sunshine's private app storage.", "Alpine 环境保存在 Sunshine 的私有应用存储中。"))
             }
             Section(model.text("Open", "打开")) {
                 Button { showsTerminal = true } label: { Label(model.text("Terminal", "终端"), systemImage: "terminal") }.disabled(!ready)
@@ -1744,7 +1744,7 @@ private struct NativeAlpineSettingsView: View {
         }
         .navigationTitle("Alpine")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showsFiles) { AlpineFileManagerView(host: AetherRuntimeHost.shared) }
+        .sheet(isPresented: $showsFiles) { AlpineFileManagerView(host: SunshineRuntimeHost.shared) }
         .fullScreenCover(isPresented: $showsTerminal) { NativeAlpineTerminalScreen() }
         .confirmationDialog(model.text("Reset Alpine data?", "重置 Alpine 数据？"), isPresented: $confirmsReset, titleVisibility: .visible) {
             Button(model.text("Reset", "重置"), role: .destructive) { model.perform("alpine_reset") }
@@ -1940,28 +1940,28 @@ private struct NativeStatisticsView: View {
 private final class NativeAlpineTerminalModel: NSObject, ObservableObject, NativeRuntimeProcessListener {
     @Published var title = "Alpine"
     @Published var status = "Starting Alpine..."
-    let terminal = AetherTerminalView(frame: .zero)
+    let terminal = SunshineTerminalView(frame: .zero)
     private var processID: Int64 = 0
 
     override init() {
         super.init()
         terminal.onInput = { [weak self] data in
             guard let self, self.processID > 0 else { return }
-            _ = AetherRuntimeHost.shared.writeStdin(processId: self.processID, bytes: data.nativeKotlinBytes)
+            _ = SunshineRuntimeHost.shared.writeStdin(processId: self.processID, bytes: data.nativeKotlinBytes)
         }
         terminal.onResize = { [weak self] columns, rows in
             guard let self, self.processID > 0 else { return }
-            AetherRuntimeHost.shared.resizeTerminal(processId: self.processID, columns: Int32(columns), rows: Int32(rows))
+            SunshineRuntimeHost.shared.resizeTerminal(processId: self.processID, columns: Int32(columns), rows: Int32(rows))
         }
         terminal.onTitleChanged = { [weak self] title in self?.title = title.isEmpty ? "Alpine" : title }
     }
 
     func start() {
         guard processID == 0 else { return }
-        processID = AetherRuntimeHost.shared.startProcess(
+        processID = SunshineRuntimeHost.shared.startProcess(
             executable: "/bin/sh",
             arguments: ["-l"],
-            environment: ["HOME": "/root", "TERM": "xterm-256color", "AETHER_WORKSPACE": "/workspace"],
+            environment: ["HOME": "/root", "TERM": "xterm-256color", "SUNSHINE_WORKSPACE": "/workspace"],
             workingDirectory: "/workspace",
             redirectErrorStream: true,
             interactiveTerminal: true,
@@ -1973,7 +1973,7 @@ private final class NativeAlpineTerminalModel: NSObject, ObservableObject, Nativ
     }
 
     func stop() {
-        if processID > 0 { AetherRuntimeHost.shared.signal(processId: processID, signal: 15) }
+        if processID > 0 { SunshineRuntimeHost.shared.signal(processId: processID, signal: 15) }
         processID = 0
         terminal.cleanup()
     }
@@ -2015,9 +2015,9 @@ private struct NativeAlpineTerminalScreen: View {
 }
 
 private struct NativeAlpineTerminalSurface: UIViewRepresentable {
-    let view: AetherTerminalView
-    func makeUIView(context: Context) -> AetherTerminalView { view }
-    func updateUIView(_ uiView: AetherTerminalView, context: Context) { uiView.setDarkTheme(true) }
+    let view: SunshineTerminalView
+    func makeUIView(context: Context) -> SunshineTerminalView { view }
+    func updateUIView(_ uiView: SunshineTerminalView, context: Context) { uiView.setDarkTheme(true) }
 }
 
 private extension Data {
@@ -2121,23 +2121,23 @@ private struct NativeAboutSettingsView: View {
                     .frame(width: 96, height: 96)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .padding(.top, 24)
-                Text("Aether").font(.largeTitle.bold())
+                Text("Sunshine").font(.largeTitle.bold())
                 Text(model.text("Release \(version)", "正式版 \(version)"))
                     .font(.subheadline).foregroundStyle(.secondary)
                 VStack(spacing: 0) {
-                    aboutRow(model.text("Author", "作者"), "Zhou-Shilin")
+                    aboutRow(model.text("Author", "作者"), "highsockscapital")
                     Divider().padding(.leading, 16)
                     aboutRow(model.text("Version", "版本"), version)
                     Divider().padding(.leading, 16)
-                    Link(destination: URL(string: "https://aether.baimoqilin.com")!) {
+                    Link(destination: URL(string: "https://sunshine.highsockscapital.com")!) {
                         linkRow(model.text("Website", "网站"), "globe")
                     }
                     Divider().padding(.leading, 16)
-                    Link(destination: URL(string: "https://github.com/Zhou-Shilin/Aether")!) {
+                    Link(destination: URL(string: "https://github.com/highsockscapital/Sunshine")!) {
                         linkRow("GitHub", "chevron.left.forwardslash.chevron.right")
                     }
                     Divider().padding(.leading, 16)
-                    Link(destination: URL(string: "https://github.com/Zhou-Shilin/Aether/wiki/Privacy-Policy")!) {
+                    Link(destination: URL(string: "https://github.com/highsockscapital/Sunshine/wiki/Privacy-Policy")!) {
                         linkRow(model.text("Privacy Policy", "隐私政策"), "hand.raised")
                     }
                 }
@@ -2145,7 +2145,7 @@ private struct NativeAboutSettingsView: View {
                     Color(uiColor: .secondarySystemGroupedBackground),
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous)
                 )
-                Text("Copyright © Zhou-Shilin")
+                Text("Copyright © highsockscapital")
                     .font(.footnote).foregroundStyle(.tertiary).padding(.top, 4)
             }
             .padding(.horizontal, 20).padding(.bottom, 28)

@@ -44,7 +44,7 @@ struct AlpineFileEntry: Identifiable, Hashable {
 
 struct AlpineFileManagerView: View {
     @Environment(\.dismiss) private var dismiss
-    let host: AetherRuntimeHost
+    let host: SunshineRuntimeHost
 
     var body: some View {
         NavigationStack {
@@ -75,10 +75,10 @@ private final class AlpineDirectoryModel: ObservableObject {
     @Published var sortOrder: SortOrder = .name
     @Published var isImporting = false
 
-    let host: AetherRuntimeHost
+    let host: SunshineRuntimeHost
     let path: String
 
-    init(host: AetherRuntimeHost, path: String) {
+    init(host: SunshineRuntimeHost, path: String) {
         self.host = host
         self.path = path
     }
@@ -188,7 +188,7 @@ private struct AlpineDirectoryView: View {
     @State private var pendingDeletion: AlpineFileEntry?
     @State private var importKind: ImportKind?
 
-    init(host: AetherRuntimeHost, path: String) {
+    init(host: SunshineRuntimeHost, path: String) {
         _model = StateObject(wrappedValue: AlpineDirectoryModel(host: host, path: path))
     }
 
@@ -397,10 +397,10 @@ private final class AlpineFileModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var isSaving = false
 
-    let host: AetherRuntimeHost
+    let host: SunshineRuntimeHost
     let entry: AlpineFileEntry
 
-    init(host: AetherRuntimeHost, entry: AlpineFileEntry) {
+    init(host: SunshineRuntimeHost, entry: AlpineFileEntry) {
         self.host = host
         self.entry = entry
     }
@@ -436,7 +436,7 @@ private final class AlpineFileModel: ObservableObject {
 private struct AlpineFileView: View {
     @StateObject private var model: AlpineFileModel
 
-    init(host: AetherRuntimeHost, entry: AlpineFileEntry) {
+    init(host: SunshineRuntimeHost, entry: AlpineFileEntry) {
         _model = StateObject(wrappedValue: AlpineFileModel(host: host, entry: entry))
     }
 

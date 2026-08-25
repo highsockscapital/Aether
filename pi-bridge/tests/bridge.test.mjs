@@ -135,12 +135,12 @@ afterEach(async () => {
   await Promise.all([...activeClients].map((client) => client.close()));
 });
 
-test("lists Pi-discovered project skills without Aether managed copies", async () => {
-  const root = await mkdtemp(join(tmpdir(), "aether-skills-"));
+test("lists Pi-discovered project skills without Sunshine managed copies", async () => {
+  const root = await mkdtemp(join(tmpdir(), "sunshine-skills-"));
   const workspace = join(root, "workspace");
   const agentDir = join(root, "agent");
   const projectSkill = join(workspace, ".agents", "skills", "review");
-  const managedSkill = join(workspace, ".aether", "skills", "managed");
+  const managedSkill = join(workspace, ".sunshine", "skills", "managed");
   await mkdir(projectSkill, { recursive: true });
   await mkdir(managedSkill, { recursive: true });
   await mkdir(agentDir, { recursive: true });
@@ -150,7 +150,7 @@ test("lists Pi-discovered project skills without Aether managed copies", async (
   );
   await writeFile(
     join(managedSkill, "SKILL.md"),
-    "---\nname: managed\ndescription: Already managed by Aether\n---\n",
+    "---\nname: managed\ndescription: Already managed by Sunshine\n---\n",
   );
   const client = new BridgeClient({ HOME: root }, "dist/extension-bridge.mjs");
   try {
@@ -168,7 +168,7 @@ test("lists Pi-discovered project skills without Aether managed copies", async (
 });
 
 test("lists Pi extension packages from an isolated agent directory", async () => {
-  const home = await mkdtemp(join(tmpdir(), "aether-pi-packages-"));
+  const home = await mkdtemp(join(tmpdir(), "sunshine-pi-packages-"));
   const client = new BridgeClient(
     { HOME: home, USERPROFILE: home },
     "dist/extension-bridge.mjs",
@@ -189,32 +189,32 @@ test("lists Pi extension packages from an isolated agent directory", async () =>
 });
 
 test("removes extension packages without reloading their code", async () => {
-  const home = await mkdtemp(join(tmpdir(), "aether-remove-package-"));
+  const home = await mkdtemp(join(tmpdir(), "sunshine-remove-package-"));
   const agentDirectory = join(home, ".pi", "agent");
   const packageDirectory = join(
     agentDirectory,
     "npm",
     "node_modules",
-    "aether-remove-test",
+    "sunshine-remove-test",
   );
   await mkdir(packageDirectory, { recursive: true });
   await writeFile(
     join(agentDirectory, "settings.json"),
-    JSON.stringify({ packages: ["npm:aether-remove-test"] }),
+    JSON.stringify({ packages: ["npm:sunshine-remove-test"] }),
     "utf8",
   );
   await writeFile(
     join(packageDirectory, "package.json"),
     JSON.stringify({
-      name: "aether-remove-test",
+      name: "sunshine-remove-test",
       version: "1.0.0",
-      aether: { extensions: ["./broken.ts"] },
+      sunshine: { extensions: ["./broken.ts"] },
     }),
     "utf8",
   );
   await writeFile(
     join(packageDirectory, "broken.ts"),
-    "export default (aether) => aether.registerSettings({ id: 'old', title: 'Old', sections: [] });\n",
+    "export default (sunshine) => sunshine.registerSettings({ id: 'old', title: 'Old', sections: [] });\n",
     "utf8",
   );
 
@@ -225,7 +225,7 @@ test("removes extension packages without reloading their code", async () => {
   });
   try {
     const result = await client.request("package-remove", "remove_extension_package", {
-      source: "npm:aether-remove-test",
+      source: "npm:sunshine-remove-test",
     });
     assert.equal(result.removed, true);
     assert.equal(Object.hasOwn(result, "reload"), false);
@@ -237,26 +237,26 @@ test("removes extension packages without reloading their code", async () => {
 });
 
 test("reports Native Mod entrypoints for installed npm packages", async () => {
-  const home = await mkdtemp(join(tmpdir(), "aether-native-package-"));
+  const home = await mkdtemp(join(tmpdir(), "sunshine-native-package-"));
   const agentDirectory = join(home, ".pi", "agent");
   const packageDirectory = join(
     agentDirectory,
     "npm",
     "node_modules",
-    "aether-native-test",
+    "sunshine-native-test",
   );
   await mkdir(packageDirectory, { recursive: true });
   await writeFile(
     join(agentDirectory, "settings.json"),
-    JSON.stringify({ packages: ["npm:aether-native-test"] }),
+    JSON.stringify({ packages: ["npm:sunshine-native-test"] }),
     "utf8",
   );
   await writeFile(
     join(packageDirectory, "package.json"),
     JSON.stringify({
-      name: "aether-native-test",
+      name: "sunshine-native-test",
       version: "1.0.0",
-      aether: {
+      sunshine: {
         native: {
           classpath: ["./mod.dex"],
           entrypoints: [],
@@ -278,7 +278,7 @@ test("reports Native Mod entrypoints for installed npm packages", async () => {
       "list_extension_packages",
     );
     assert.equal(result.packages.length, 1);
-    assert.equal(result.packages[0].source, "npm:aether-native-test");
+    assert.equal(result.packages[0].source, "npm:sunshine-native-test");
     assert.equal(result.packages[0].native_entrypoint_count, 1);
   } finally {
     await client.close();
@@ -286,34 +286,34 @@ test("reports Native Mod entrypoints for installed npm packages", async () => {
   }
 });
 
-test("loads Aether UI extensions, renders native trees, runs actions, and intercepts events", async () => {
-  const home = await mkdtemp(join(tmpdir(), "aether-app-extensions-"));
-  const extensionDirectory = join(home, ".aether", "extensions", "demo");
+test("loads Sunshine UI extensions, renders native trees, runs actions, and intercepts events", async () => {
+  const home = await mkdtemp(join(tmpdir(), "sunshine-app-extensions-"));
+  const extensionDirectory = join(home, ".sunshine", "extensions", "demo");
   await mkdir(extensionDirectory, { recursive: true });
   await writeFile(
     join(extensionDirectory, "package.json"),
     JSON.stringify({
-      name: "aether-demo",
+      name: "sunshine-demo",
       version: "1.0.0",
-      aether: { extensions: ["./index.ts"] },
+      sunshine: { extensions: ["./index.ts"] },
     }),
     "utf8",
   );
   await writeFile(
     join(extensionDirectory, "index.ts"),
     `
-import { defineAetherExtension, ui } from "@aether/extension-api";
+import { defineSunshineExtension, ui } from "@sunshine/extension-api";
 
 let removeFetchToolTitle = () => {};
 
-export default defineAetherExtension((aether) => {
-  aether.registerAction("increment", async () => {
-    const count = aether.storage.get("count", 0) + 1;
-    aether.storage.set("count", count);
-    await aether.host.invoke("app.notify", { message: "count=" + count });
+export default defineSunshineExtension((sunshine) => {
+  sunshine.registerAction("increment", async () => {
+    const count = sunshine.storage.get("count", 0) + 1;
+    sunshine.storage.set("count", count);
+    await sunshine.host.invoke("app.notify", { message: "count=" + count });
     return { count };
   });
-  aether.registerSurface("chat.composer.top", {
+  sunshine.registerSurface("chat.composer.top", {
     id: "counter",
     render: ({ storage, draft_input }) =>
       ui.card([
@@ -322,7 +322,7 @@ export default defineAetherExtension((aether) => {
         ui.button("Increment", "increment"),
       ]),
   });
-  aether.registerComponent("chat.composer.actionTray", {
+  sunshine.registerComponent("chat.composer.actionTray", {
     id: "tray-wrapper",
     mode: "wrap",
     render: () => ui.card([
@@ -330,11 +330,11 @@ export default defineAetherExtension((aether) => {
       ui.core(),
     ]),
   });
-  aether.registerAction("settings:preferences:enabled", ({ value }) => {
-    aether.storage.set("settings:preferences:enabled", value === true);
+  sunshine.registerAction("settings:preferences:enabled", ({ value }) => {
+    sunshine.storage.set("settings:preferences:enabled", value === true);
     return { customSettingsAction: true };
   });
-  aether.registerSettings({
+  sunshine.registerSettings({
     id: "preferences",
     title: "Preferences",
     sections: [{
@@ -342,7 +342,7 @@ export default defineAetherExtension((aether) => {
       settings: [{ id: "enabled", label: "Enabled", type: "toggle", default: true }],
     }],
   });
-  aether.registerSettings({
+  sunshine.registerSettings({
     id: "secondary",
     title: "Secondary",
     order: 1,
@@ -350,18 +350,18 @@ export default defineAetherExtension((aether) => {
       settings: [{ id: "enabled", label: "Enabled", type: "toggle", default: true }],
     }],
   });
-  aether.registerComposerMenuItem({ id: "run", title: "Run demo", action: "run" });
-  aether.registerMessageType({ type: "demo", render: ({ message }) => ui.text(String(message.text ?? "")) });
-  aether.registerToolTitle("web_search", "Searching the web", "Searched the web", 200);
-  removeFetchToolTitle = aether.registerToolTitle("fetch_content", "Fetching content", "Fetched content");
-  aether.registerAction("remove-fetch-title", () => {
+  sunshine.registerComposerMenuItem({ id: "run", title: "Run demo", action: "run" });
+  sunshine.registerMessageType({ type: "demo", render: ({ message }) => ui.text(String(message.text ?? "")) });
+  sunshine.registerToolTitle("web_search", "Searching the web", "Searched the web", 200);
+  removeFetchToolTitle = sunshine.registerToolTitle("fetch_content", "Fetching content", "Fetched content");
+  sunshine.registerAction("remove-fetch-title", () => {
     removeFetchToolTitle();
     return { removed: true };
   });
-  aether.registerAction("list-skills", async () =>
-    aether.services.invoke("skills", "list"));
-  aether.on("before_send", ({ text }) => ({ text: "[ext] " + text }));
-  aether.intercept("chat.new", ({ selected_skill_ids }) => ({
+  sunshine.registerAction("list-skills", async () =>
+    sunshine.services.invoke("skills", "list"));
+  sunshine.on("before_send", ({ text }) => ({ text: "[ext] " + text }));
+  sunshine.intercept("chat.new", ({ selected_skill_ids }) => ({
     selected_skill_ids,
     intercepted: true,
   }));
@@ -375,7 +375,7 @@ export default defineAetherExtension((aether) => {
     "dist/extension-bridge.mjs",
   );
   try {
-    const loaded = await client.request("aether-load", "reload_aether_extensions", {
+    const loaded = await client.request("sunshine-load", "reload_sunshine_extensions", {
       context: { draft_input: "hello" },
     });
     assert.equal(loaded.snapshot.extensions.length, 1);
@@ -405,8 +405,8 @@ export default defineAetherExtension((aether) => {
     assert.deepEqual(loaded.snapshot.event_names, ["before_send", "operation:chat.new"]);
 
     const settingsResult = await client.request(
-      "aether-settings-action",
-      "invoke_aether_extension_action",
+      "sunshine-settings-action",
+      "invoke_sunshine_extension_action",
       {
         extension_id: loaded.snapshot.extensions[0].id,
         action: "settings:preferences:enabled",
@@ -419,8 +419,8 @@ export default defineAetherExtension((aether) => {
     assert.equal(settingsResult.snapshot.settings[1].sections[0].settings[0].value, true);
 
     const removedTitle = await client.request(
-      "aether-remove-title-action",
-      "invoke_aether_extension_action",
+      "sunshine-remove-title-action",
+      "invoke_sunshine_extension_action",
       {
         extension_id: loaded.snapshot.extensions[0].id,
         action: "remove-fetch-title",
@@ -434,7 +434,7 @@ export default defineAetherExtension((aether) => {
       ["web_search"],
     );
 
-    const disabled = await client.request("aether-disabled", "reload_aether_extensions", {
+    const disabled = await client.request("sunshine-disabled", "reload_sunshine_extensions", {
       disabled_extension_paths: [extensionDirectory],
       context: { draft_input: "hello" },
     });
@@ -442,23 +442,23 @@ export default defineAetherExtension((aether) => {
     assert.deepEqual(disabled.snapshot.surfaces, []);
     assert.deepEqual(disabled.snapshot.tool_titles, []);
 
-    await client.request("aether-reenabled", "reload_aether_extensions", {
+    await client.request("sunshine-reenabled", "reload_sunshine_extensions", {
       disabled_extension_paths: [],
       disabled_package_sources: [],
       context: { draft_input: "hello" },
     });
 
-    const actionPromise = client.request("aether-action", "invoke_aether_extension_action", {
+    const actionPromise = client.request("sunshine-action", "invoke_sunshine_extension_action", {
       extension_id: loaded.snapshot.extensions[0].id,
       action: "increment",
       args: {},
       context: { draft_input: "hello" },
     });
     const hostCall = await client.waitForEvent(
-      (frame) => frame.id === "aether-action" && frame.event === "aether_host_call",
+      (frame) => frame.id === "sunshine-action" && frame.event === "sunshine_host_call",
     );
     assert.equal(hostCall.payload.method, "app.notify");
-    await client.request("aether-host-result", "aether_host_result", {
+    await client.request("sunshine-host-result", "sunshine_host_result", {
       call_id: hostCall.payload.call_id,
       ok: true,
       result: { notified: true },
@@ -467,19 +467,19 @@ export default defineAetherExtension((aether) => {
     assert.equal(actionResult.result.count, 1);
     assert.equal(actionResult.snapshot.surfaces[0].tree.children[0].text, "Count 1");
 
-    const servicePromise = client.request("aether-service-action", "invoke_aether_extension_action", {
+    const servicePromise = client.request("sunshine-service-action", "invoke_sunshine_extension_action", {
       extension_id: loaded.snapshot.extensions[0].id,
       action: "list-skills",
       args: {},
       context: {},
     });
     const serviceCall = await client.waitForEvent(
-      (frame) => frame.id === "aether-service-action" && frame.event === "aether_host_call",
+      (frame) => frame.id === "sunshine-service-action" && frame.event === "sunshine_host_call",
     );
     assert.equal(serviceCall.payload.method, "service.invoke");
     assert.equal(serviceCall.payload.args.service, "skills");
     assert.equal(serviceCall.payload.args.method, "list");
-    await client.request("aether-service-host-result", "aether_host_result", {
+    await client.request("sunshine-service-host-result", "sunshine_host_result", {
       call_id: serviceCall.payload.call_id,
       ok: true,
       result: { skills: [] },
@@ -487,7 +487,7 @@ export default defineAetherExtension((aether) => {
     const serviceResult = await servicePromise;
     assert.deepEqual(serviceResult.result, { skills: [] });
 
-    const eventResult = await client.request("aether-event", "dispatch_aether_extension_event", {
+    const eventResult = await client.request("sunshine-event", "dispatch_sunshine_extension_event", {
       event: "before_send",
       data: { text: "ship it" },
       context: {},
@@ -501,31 +501,31 @@ export default defineAetherExtension((aether) => {
   }
 });
 
-test("keeps the last working Aether runtime when a reload factory fails", async () => {
-  const home = await mkdtemp(join(tmpdir(), "aether-atomic-reload-"));
-  const extensionDirectory = join(home, ".aether", "extensions", "atomic");
+test("keeps the last working Sunshine runtime when a reload factory fails", async () => {
+  const home = await mkdtemp(join(tmpdir(), "sunshine-atomic-reload-"));
+  const extensionDirectory = join(home, ".sunshine", "extensions", "atomic");
   const extensionPath = join(extensionDirectory, "index.ts");
   await mkdir(extensionDirectory, { recursive: true });
   await writeFile(
     join(extensionDirectory, "package.json"),
     JSON.stringify({
-      name: "aether-atomic",
+      name: "sunshine-atomic",
       version: "1.0.0",
-      aether: { extensions: ["./index.ts"] },
+      sunshine: { extensions: ["./index.ts"] },
     }),
     "utf8",
   );
   await writeFile(
     extensionPath,
     `
-import { defineAetherExtension, ui } from "@baimoqilin/aether-extension-api";
+import { defineSunshineExtension, ui } from "@highsockscapital/sunshine-extension-api";
 
-export default defineAetherExtension((aether) => {
-  aether.registerSurface("chat.composer.top", {
+export default defineSunshineExtension((sunshine) => {
+  sunshine.registerSurface("chat.composer.top", {
     id: "stable",
     render: () => ui.text("stable runtime"),
   });
-  aether.registerAction("version", () => ({ version: "stable" }));
+  sunshine.registerAction("version", () => ({ version: "stable" }));
 });
 `,
     "utf8",
@@ -535,7 +535,7 @@ export default defineAetherExtension((aether) => {
   try {
     const loaded = await client.request(
       "atomic-load",
-      "reload_aether_extensions",
+      "reload_sunshine_extensions",
     );
     const extensionId = loaded.snapshot.extensions[0].id;
     assert.equal(loaded.reloaded, true);
@@ -544,10 +544,10 @@ export default defineAetherExtension((aether) => {
     await writeFile(
       extensionPath,
       `
-import { defineAetherExtension, ui } from "@aether/extension-api";
+import { defineSunshineExtension, ui } from "@sunshine/extension-api";
 
-export default defineAetherExtension((aether) => {
-  aether.registerSurface("chat.composer.top", {
+export default defineSunshineExtension((sunshine) => {
+  sunshine.registerSurface("chat.composer.top", {
     id: "partial",
     render: () => ui.text("partial runtime"),
   });
@@ -559,7 +559,7 @@ export default defineAetherExtension((aether) => {
 
     const rejected = await client.request(
       "atomic-reload-failed",
-      "reload_aether_extensions",
+      "reload_sunshine_extensions",
     );
     assert.equal(rejected.reloaded, false);
     assert.match(rejected.errors[0].error, /candidate failed after registration/);
@@ -572,7 +572,7 @@ export default defineAetherExtension((aether) => {
 
     const action = await client.request(
       "atomic-old-action",
-      "invoke_aether_extension_action",
+      "invoke_sunshine_extension_action",
       {
         extension_id: extensionId,
         action: "version",
@@ -586,9 +586,9 @@ export default defineAetherExtension((aether) => {
   }
 });
 
-test("installs dependencies for bundled Aether packages before loading them", async () => {
-  const home = await mkdtemp(join(tmpdir(), "aether-preinstalled-deps-"));
-  const packageDirectory = join(home, ".aether", "extensions", "dependency-test");
+test("installs dependencies for bundled Sunshine packages before loading them", async () => {
+  const home = await mkdtemp(join(tmpdir(), "sunshine-preinstalled-deps-"));
+  const packageDirectory = join(home, ".sunshine", "extensions", "dependency-test");
   const binDirectory = join(home, "bin");
   const npmLog = join(home, "npm.log");
   await mkdir(packageDirectory, { recursive: true });
@@ -599,13 +599,13 @@ test("installs dependencies for bundled Aether packages before loading them", as
       name: "dependency-test",
       version: "1.0.0",
       dependencies: { "fixture-dependency": "1.0.0" },
-      aether: { extensions: ["./index.ts"] },
+      sunshine: { extensions: ["./index.ts"] },
     }),
     "utf8",
   );
   await writeFile(
     join(packageDirectory, "index.ts"),
-    `export default (aether) => aether.registerAction("loaded", () => ({ loaded: true }));\n`,
+    `export default (sunshine) => sunshine.registerAction("loaded", () => ({ loaded: true }));\n`,
     "utf8",
   );
   // Simulate an interrupted install. A bare node_modules directory must not be
@@ -613,7 +613,7 @@ test("installs dependencies for bundled Aether packages before loading them", as
   await mkdir(join(packageDirectory, "node_modules"), { recursive: true });
   await writeFile(
     join(binDirectory, "npm"),
-    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$AETHER_TEST_NPM_LOG"\nmkdir -p node_modules\n`,
+    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$SUNSHINE_TEST_NPM_LOG"\nmkdir -p node_modules\n`,
     { encoding: "utf8", mode: 0o755 },
   );
 
@@ -621,23 +621,23 @@ test("installs dependencies for bundled Aether packages before loading them", as
     HOME: home,
     USERPROFILE: home,
     PATH: `${binDirectory}:${process.env.PATH ?? ""}`,
-    AETHER_TEST_NPM_LOG: npmLog,
+    SUNSHINE_TEST_NPM_LOG: npmLog,
   });
   try {
-    const first = await client.request("dependency-load", "reload_aether_extensions");
+    const first = await client.request("dependency-load", "reload_sunshine_extensions");
     assert.equal(first.reloaded, true);
     assert.equal(first.snapshot.extensions.length, 1);
     assert.match(await readFile(npmLog, "utf8"), /^install /m);
-    assert.ok(await readFile(join(packageDirectory, "node_modules", ".aether-install-complete"), "utf8"));
+    assert.ok(await readFile(join(packageDirectory, "node_modules", ".sunshine-install-complete"), "utf8"));
 
-    await client.request("dependency-reload", "reload_aether_extensions");
+    await client.request("dependency-reload", "reload_sunshine_extensions");
     assert.equal((await readFile(npmLog, "utf8")).trim().split("\n").length, 1);
 
     const manifestPath = join(packageDirectory, "package.json");
     const updatedManifest = JSON.parse(await readFile(manifestPath, "utf8"));
     updatedManifest.dependencies["second-fixture-dependency"] = "2.0.0";
     await writeFile(manifestPath, JSON.stringify(updatedManifest), "utf8");
-    await client.request("dependency-update", "reload_aether_extensions");
+    await client.request("dependency-update", "reload_sunshine_extensions");
     assert.equal((await readFile(npmLog, "utf8")).trim().split("\n").length, 2);
   } finally {
     await client.close();
@@ -645,15 +645,15 @@ test("installs dependencies for bundled Aether packages before loading them", as
   }
 });
 
-test("does not let one broken Aether extension block unrelated reload operations", async () => {
-  const home = await mkdtemp(join(tmpdir(), "aether-broken-extension-"));
-  const root = join(home, ".aether", "extensions");
+test("does not let one broken Sunshine extension block unrelated reload operations", async () => {
+  const home = await mkdtemp(join(tmpdir(), "sunshine-broken-extension-"));
+  const root = join(home, ".sunshine", "extensions");
   const broken = join(root, "broken");
   const healthy = join(root, "healthy");
   await mkdir(broken, { recursive: true });
   await writeFile(
     join(broken, "package.json"),
-    JSON.stringify({ name: "broken", aether: { extensions: ["./index.ts"] } }),
+    JSON.stringify({ name: "broken", sunshine: { extensions: ["./index.ts"] } }),
     "utf8",
   );
   await writeFile(join(broken, "index.ts"), `export default () => { throw new Error("broken extension"); };\n`, "utf8");
@@ -662,51 +662,51 @@ test("does not let one broken Aether extension block unrelated reload operations
   try {
     const blocked = await client.request("broken-only", "reload_all_extensions");
     assert.equal(blocked.succeeded, true);
-    assert.equal(blocked.aether_reload.reloaded, false);
-    assert.match(blocked.aether_reload.errors[0].error, /broken extension/);
+    assert.equal(blocked.sunshine_reload.reloaded, false);
+    assert.match(blocked.sunshine_reload.errors[0].error, /broken extension/);
 
     await mkdir(healthy, { recursive: true });
     await writeFile(
       join(healthy, "package.json"),
-      JSON.stringify({ name: "healthy", aether: { extensions: ["./index.ts"] } }),
+      JSON.stringify({ name: "healthy", sunshine: { extensions: ["./index.ts"] } }),
       "utf8",
     );
     await writeFile(
       join(healthy, "index.ts"),
-      `import { ui } from "@aether/extension-api"; export default (aether) => aether.registerSurface("chat.composer.top", ui.text("healthy"));\n`,
+      `import { ui } from "@sunshine/extension-api"; export default (sunshine) => sunshine.registerSurface("chat.composer.top", ui.text("healthy"));\n`,
       "utf8",
     );
 
     const recovered = await client.request("broken-with-healthy", "reload_all_extensions");
     assert.equal(recovered.succeeded, true);
-    assert.equal(recovered.aether_reload.reloaded, true);
-    assert.deepEqual(recovered.aether.extensions.map(({ name }) => name), ["healthy"]);
-    assert.match(recovered.aether_reload.errors[0].error, /broken extension/);
+    assert.equal(recovered.sunshine_reload.reloaded, true);
+    assert.deepEqual(recovered.sunshine.extensions.map(({ name }) => name), ["healthy"]);
+    assert.match(recovered.sunshine_reload.errors[0].error, /broken extension/);
   } finally {
     await client.close();
     await rm(home, { recursive: true, force: true });
   }
 });
 
-test("enforces Aether Script API compatibility ranges", async () => {
-  const home = await mkdtemp(join(tmpdir(), "aether-api-range-"));
-  const extensionDirectory = join(home, ".aether", "extensions", "api-range");
+test("enforces Sunshine Script API compatibility ranges", async () => {
+  const home = await mkdtemp(join(tmpdir(), "sunshine-api-range-"));
+  const extensionDirectory = join(home, ".sunshine", "extensions", "api-range");
   const manifestPath = join(extensionDirectory, "package.json");
   await mkdir(extensionDirectory, { recursive: true });
   await writeFile(
     join(extensionDirectory, "index.ts"),
     `
-import { defineAetherExtension } from "@aether/extension-api";
-export default defineAetherExtension(() => {});
+import { defineSunshineExtension } from "@sunshine/extension-api";
+export default defineSunshineExtension(() => {});
 `,
     "utf8",
   );
   await writeFile(
     manifestPath,
     JSON.stringify({
-      name: "aether-api-range",
+      name: "sunshine-api-range",
       version: "1.0.0",
-      aether: {
+      sunshine: {
         api: { min: 3 },
         extensions: ["./index.ts"],
       },
@@ -718,7 +718,7 @@ export default defineAetherExtension(() => {});
   try {
     const incompatible = await client.request(
       "api-range-incompatible",
-      "reload_aether_extensions",
+      "reload_sunshine_extensions",
     );
     assert.equal(incompatible.reloaded, false);
     assert.match(incompatible.errors[0].error, /API 3 or newer/);
@@ -726,9 +726,9 @@ export default defineAetherExtension(() => {});
     await writeFile(
       manifestPath,
       JSON.stringify({
-        name: "aether-api-range",
+        name: "sunshine-api-range",
         version: "1.0.0",
-        aether: {
+        sunshine: {
           api: { max: 1, allowNewer: true },
           extensions: ["./index.ts"],
         },
@@ -737,7 +737,7 @@ export default defineAetherExtension(() => {});
     );
     const allowed = await client.request(
       "api-range-allow-newer",
-      "reload_aether_extensions",
+      "reload_sunshine_extensions",
     );
     assert.equal(allowed.reloaded, true);
     assert.equal(allowed.snapshot.extensions.length, 1);
@@ -747,24 +747,24 @@ export default defineAetherExtension(() => {});
   }
 });
 
-test("reload_all_extensions honors Aether extension load filters", async () => {
-  const home = await mkdtemp(join(tmpdir(), "aether-reload-all-filters-"));
-  const extensionDirectory = join(home, ".aether", "extensions", "filtered");
+test("reload_all_extensions honors Sunshine extension load filters", async () => {
+  const home = await mkdtemp(join(tmpdir(), "sunshine-reload-all-filters-"));
+  const extensionDirectory = join(home, ".sunshine", "extensions", "filtered");
   await mkdir(extensionDirectory, { recursive: true });
   await writeFile(
     join(extensionDirectory, "package.json"),
     JSON.stringify({
-      name: "aether-filtered",
+      name: "sunshine-filtered",
       version: "1.0.0",
-      aether: { extensions: ["./index.ts"] },
+      sunshine: { extensions: ["./index.ts"] },
     }),
     "utf8",
   );
   await writeFile(
     join(extensionDirectory, "index.ts"),
     `
-import { defineAetherExtension } from "@aether/extension-api";
-export default defineAetherExtension(() => {});
+import { defineSunshineExtension } from "@sunshine/extension-api";
+export default defineSunshineExtension(() => {});
 `,
     "utf8",
   );
@@ -777,7 +777,7 @@ export default defineAetherExtension(() => {});
       { disabled_extension_paths: [extensionDirectory] },
     );
     assert.equal(disabled.succeeded, true);
-    assert.deepEqual(disabled.aether.extensions, []);
+    assert.deepEqual(disabled.sunshine.extensions, []);
 
     const enabled = await client.request(
       "reload-all-enabled",
@@ -788,35 +788,35 @@ export default defineAetherExtension(() => {});
       },
     );
     assert.equal(enabled.succeeded, true);
-    assert.equal(enabled.aether.extensions.length, 1);
+    assert.equal(enabled.sunshine.extensions.length, 1);
   } finally {
     await client.close();
     await rm(home, { recursive: true, force: true });
   }
 });
 
-test("routes delayed Aether host calls through the persistent subscriber", async () => {
-  const home = await mkdtemp(join(tmpdir(), "aether-background-host-"));
-  const extensionDirectory = join(home, ".aether", "extensions", "background");
+test("routes delayed Sunshine host calls through the persistent subscriber", async () => {
+  const home = await mkdtemp(join(tmpdir(), "sunshine-background-host-"));
+  const extensionDirectory = join(home, ".sunshine", "extensions", "background");
   await mkdir(extensionDirectory, { recursive: true });
   await writeFile(
     join(extensionDirectory, "package.json"),
     JSON.stringify({
-      name: "aether-background",
+      name: "sunshine-background",
       version: "1.0.0",
-      aether: { extensions: ["./index.ts"] },
+      sunshine: { extensions: ["./index.ts"] },
     }),
     "utf8",
   );
   await writeFile(
     join(extensionDirectory, "index.ts"),
     `
-import { defineAetherExtension } from "@aether/extension-api";
+import { defineSunshineExtension } from "@sunshine/extension-api";
 
-export default defineAetherExtension((aether) => {
-  aether.registerAction("schedule", () => {
+export default defineSunshineExtension((sunshine) => {
+  sunshine.registerAction("schedule", () => {
     setTimeout(() => {
-      void aether.host.invoke("app.notify", { message: "background" });
+      void sunshine.host.invoke("app.notify", { message: "background" });
     }, 250);
     return { scheduled: true };
   });
@@ -829,19 +829,19 @@ export default defineAetherExtension((aether) => {
   try {
     const loaded = await client.request(
       "background-load",
-      "reload_aether_extensions",
+      "reload_sunshine_extensions",
     );
-    client.send("background-subscriber", "subscribe_aether_extensions");
+    client.send("background-subscriber", "subscribe_sunshine_extensions");
     await client.waitForEvent(
       (frame) =>
         frame.id === "background-subscriber" &&
-        frame.event === "aether_invalidated" &&
+        frame.event === "sunshine_invalidated" &&
         frame.payload.subscribed === true,
     );
 
     const action = await client.request(
       "background-action",
-      "invoke_aether_extension_action",
+      "invoke_sunshine_extension_action",
       {
         extension_id: loaded.snapshot.extensions[0].id,
         action: "schedule",
@@ -853,11 +853,11 @@ export default defineAetherExtension((aether) => {
     const hostCall = await client.waitForEvent(
       (frame) =>
         frame.id === "background-subscriber" &&
-        frame.event === "aether_host_call" &&
+        frame.event === "sunshine_host_call" &&
         frame.payload.method === "app.notify",
     );
     assert.notEqual(hostCall.id, "background-action");
-    await client.request("background-host-result", "aether_host_result", {
+    await client.request("background-host-result", "sunshine_host_result", {
       call_id: hostCall.payload.call_id,
       ok: true,
       result: { notified: true },
@@ -1003,8 +1003,8 @@ async function createOpenAIResponsesServer() {
 
 function openAIFetchRedirectEnvironment(targetBaseUrl) {
   const preloadSource = `
-const targetOrigin = process.env.AETHER_TEST_OPENAI_REDIRECT_ORIGIN;
-if (!targetOrigin) throw new Error("AETHER_TEST_OPENAI_REDIRECT_ORIGIN is required.");
+const targetOrigin = process.env.SUNSHINE_TEST_OPENAI_REDIRECT_ORIGIN;
+if (!targetOrigin) throw new Error("SUNSHINE_TEST_OPENAI_REDIRECT_ORIGIN is required.");
 const originalFetch = globalThis.fetch;
 globalThis.fetch = (input, init) => {
   const rawUrl = typeof input === "string" || input instanceof URL ? String(input) : input.url;
@@ -1015,7 +1015,7 @@ globalThis.fetch = (input, init) => {
 `;
   const preloadSpecifier = `data:text/javascript,${encodeURIComponent(preloadSource)}`;
   return {
-    AETHER_TEST_OPENAI_REDIRECT_ORIGIN: new URL(targetBaseUrl).origin,
+    SUNSHINE_TEST_OPENAI_REDIRECT_ORIGIN: new URL(targetBaseUrl).origin,
     NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --import=${preloadSpecifier}`.trim(),
   };
 }
@@ -1069,7 +1069,7 @@ test("reports pinned bridge and Pi versions", async () => {
 });
 
 test("loads source-compatible Pi TypeScript extensions and runs their tools", async (t) => {
-  const workspace = await mkdtemp(join(tmpdir(), "aether-pi-extension-"));
+  const workspace = await mkdtemp(join(tmpdir(), "sunshine-pi-extension-"));
   t.after(() => rm(workspace, { recursive: true, force: true }));
   const extensionDirectory = join(workspace, ".pi", "extensions");
   await mkdir(extensionDirectory, { recursive: true });
@@ -1135,7 +1135,7 @@ export default function (pi: ExtensionAPI) {
 });
 
 test("loads TypeBox extensions from the standalone bridge bundle", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "aether-standalone-bridge-"));
+  const root = await mkdtemp(join(tmpdir(), "sunshine-standalone-bridge-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const bridgePath = join(root, "bridge.mjs");
   const workspace = join(root, "workspace");
@@ -1174,7 +1174,7 @@ export default (pi) => pi.registerTool({
 });
 
 test("reloads Pi extensions atomically for an existing harness session", async (t) => {
-  const workspace = await mkdtemp(join(tmpdir(), "aether-pi-reload-"));
+  const workspace = await mkdtemp(join(tmpdir(), "sunshine-pi-reload-"));
   t.after(() => rm(workspace, { recursive: true, force: true }));
   const extensionDirectory = join(workspace, ".pi", "extensions");
   const extensionPath = join(extensionDirectory, "reloadable.ts");
@@ -1232,7 +1232,7 @@ export default function (pi: ExtensionAPI) {
 });
 
 test("recreates existing sessions after disabling a Pi extension", async (t) => {
-  const workspace = await mkdtemp(join(tmpdir(), "aether-pi-disable-"));
+  const workspace = await mkdtemp(join(tmpdir(), "sunshine-pi-disable-"));
   t.after(() => rm(workspace, { recursive: true, force: true }));
   const extensionDirectory = join(workspace, ".pi", "extensions");
   await mkdir(extensionDirectory, { recursive: true });
@@ -1283,7 +1283,7 @@ export default function (pi) {
 });
 
 test("recreates a reused session when a new Pi extension becomes discoverable", async (t) => {
-  const workspace = await mkdtemp(join(tmpdir(), "aether-pi-extension-discovery-"));
+  const workspace = await mkdtemp(join(tmpdir(), "sunshine-pi-extension-discovery-"));
   t.after(() => rm(workspace, { recursive: true, force: true }));
   const extensionDirectory = join(workspace, ".pi", "extensions");
   await mkdir(extensionDirectory, { recursive: true });
@@ -1380,7 +1380,7 @@ test("closes AgentSession instances explicitly", async () => {
 });
 
 test("rehydrates a persisted AgentSession before navigation", async (t) => {
-  const home = await mkdtemp(join(tmpdir(), "aether-session-rehydrate-"));
+  const home = await mkdtemp(join(tmpdir(), "sunshine-session-rehydrate-"));
   t.after(() => rm(home, { recursive: true, force: true }));
   const client = new BridgeClient({ HOME: home, USERPROFILE: home });
   const config = fauxConfig();
@@ -1406,7 +1406,7 @@ test("rehydrates a persisted AgentSession before navigation", async (t) => {
 });
 
 test("imports validated Pi JSONL into a relocated session file", async (t) => {
-  const home = await mkdtemp(join(tmpdir(), "aether-jsonl-import-"));
+  const home = await mkdtemp(join(tmpdir(), "sunshine-jsonl-import-"));
   t.after(() => rm(home, { recursive: true, force: true }));
   const client = new BridgeClient({ HOME: home, USERPROFILE: home });
   await client.request("jsonl-create", "run_turn", turnPayload("session-jsonl", [userMessage("hello")]));
@@ -1435,7 +1435,7 @@ test("imports validated Pi JSONL into a relocated session file", async (t) => {
 });
 
 test("uses Pi Coding Agent native tool schemas and platform runtime sets", async (t) => {
-  const home = await mkdtemp(join(tmpdir(), "aether-native-tools-"));
+  const home = await mkdtemp(join(tmpdir(), "sunshine-native-tools-"));
   const workspace = join(home, "alpine-workspace");
   const termuxWorkspace = join(home, "termux-workspace");
   await Promise.all([mkdir(workspace), mkdir(termuxWorkspace)]);
@@ -1482,16 +1482,16 @@ test("uses Pi Coding Agent native tool schemas and platform runtime sets", async
   assert.equal("environment" in actualByName.bash.properties, false);
 });
 
-test("allows only Aether-owned host tools and exposes the platform browser", async (t) => {
-  const home = await mkdtemp(join(tmpdir(), "aether-host-tools-"));
+test("allows only Sunshine-owned host tools and exposes the platform browser", async (t) => {
+  const home = await mkdtemp(join(tmpdir(), "sunshine-host-tools-"));
   t.after(() => rm(home, { recursive: true, force: true }));
   const client = new BridgeClient({ HOME: home, USERPROFILE: home });
   const sharedNames = [
-    "aether_config_get",
-    "aether_config_set",
-    "aether_skill_manage",
-    "aether_extension_manage",
-    "aether_developer_manage",
+    "sunshine_config_get",
+    "sunshine_config_set",
+    "sunshine_skill_manage",
+    "sunshine_extension_manage",
+    "sunshine_developer_manage",
   ];
   const removedNames = [
     "analyze_image",
@@ -1500,7 +1500,7 @@ test("allows only Aether-owned host tools and exposes the platform browser", asy
     "fetch_web_url",
     "tavily_search",
     "mcp_call_tool",
-    "aether_mcp_manage",
+    "sunshine_mcp_manage",
   ];
   const requested = ["browser", ...sharedNames, ...removedNames].map((name) => hostTool(name));
 
@@ -1648,7 +1648,7 @@ test("reconnects a failed provider stream without restarting the harness turn", 
       {
         provider_type: "openai_compatible",
         provider_config_id: "provider-reconnect",
-        pi_provider_id: "aether-retry-test",
+        pi_provider_id: "sunshine-retry-test",
         pi_api: "openai-completions",
         model_id: "retry-model",
         base_url: `http://127.0.0.1:${address.port}/v1`,
@@ -1693,7 +1693,7 @@ test("reports Pi AgentSession retry errors", async () => {
       {
         provider_type: "openai_compatible",
         provider_config_id: "provider-network-detail",
-        pi_provider_id: "aether-network-detail-test",
+        pi_provider_id: "sunshine-network-detail-test",
         pi_api: "openai-completions",
         model_id: "network-detail-model",
         base_url: `http://127.0.0.1:${address.port}/v1`,
@@ -1722,7 +1722,7 @@ test("maps a custom OpenAI-compatible provider through Pi", async (t) => {
       receivedRequest = {
         url: request.url,
         authorization: request.headers.authorization,
-        customHeader: request.headers["x-aether-test"],
+        customHeader: request.headers["x-sunshine-test"],
         body: JSON.parse(Buffer.concat(chunks).toString("utf8")),
       };
       response.writeHead(200, { "content-type": "text/event-stream" });
@@ -1771,12 +1771,12 @@ test("maps a custom OpenAI-compatible provider through Pi", async (t) => {
       model_config: {
         provider_type: "openai_compatible",
         provider_config_id: "custom-completion",
-        pi_provider_id: "aether-test",
+        pi_provider_id: "sunshine-test",
         pi_api: "openai-completions",
         model_id: "custom-model",
         base_url: `http://127.0.0.1:${address.port}/v1`,
         api_key: "secret-key",
-        custom_headers: { "X-Aether-Test": "present" },
+        custom_headers: { "X-Sunshine-Test": "present" },
         reasoning: false,
       },
       system_prompt: "Reply briefly.",
@@ -1849,7 +1849,7 @@ test("passes reasoning_effort none when off is selected for a model with thinkin
       model_config: {
         provider_type: "openai_compatible",
         provider_config_id: "custom-reasoning-none",
-        pi_provider_id: "aether-test-reasoning",
+        pi_provider_id: "sunshine-test-reasoning",
         pi_api: "openai-completions",
         model_id: "reasoning-model",
         base_url: `http://127.0.0.1:${address.port}/v1`,
@@ -1923,7 +1923,7 @@ test("updates reasoning effort when reusing an agent session", async (t) => {
   const config = {
     provider_type: "openai_compatible",
     provider_config_id: "agent-reasoning-level",
-    pi_provider_id: "aether-test-agent-reasoning",
+    pi_provider_id: "sunshine-test-agent-reasoning",
     pi_api: "openai-completions",
     model_id: "reasoning-model",
     base_url: `http://127.0.0.1:${address.port}/v1`,
@@ -2024,7 +2024,7 @@ test("reads top-level reasoning_tokens from OpenAI-compatible completion usage",
       model_config: {
         provider_type: "openai_compatible",
         provider_config_id: "custom-top-level-reasoning-usage",
-        pi_provider_id: "aether-test-reasoning",
+        pi_provider_id: "sunshine-test-reasoning",
         pi_api: "openai-completions",
         model_id: "reasoning-model",
         base_url: `http://127.0.0.1:${address.port}/v1`,
@@ -2052,7 +2052,7 @@ test("accepts arbitrary manual model IDs for a built-in provider", async (t) => 
       receivedRequest = {
         url: request.url,
         authorization: request.headers.authorization,
-        customHeader: request.headers["x-aether-test"],
+        customHeader: request.headers["x-sunshine-test"],
         body: JSON.parse(Buffer.concat(chunks).toString("utf8")),
       };
       response.writeHead(400, { "content-type": "application/json" });
@@ -2074,7 +2074,7 @@ test("accepts arbitrary manual model IDs for a built-in provider", async (t) => 
       model_id: "sfsefehfjksdnf",
       base_url: `http://127.0.0.1:${address.port}/v1`,
       api_key: "secret-key",
-      custom_headers: { "X-Aether-Test": "present" },
+      custom_headers: { "X-Sunshine-Test": "present" },
       reasoning: true,
       max_retries: 0,
     },
@@ -2093,7 +2093,7 @@ test("accepts arbitrary manual model IDs for a built-in provider", async (t) => 
 });
 
 test("omits explicit cache mode for custom OpenAI Responses endpoints", async (t) => {
-  const home = await mkdtemp(join(tmpdir(), "aether-custom-responses-"));
+  const home = await mkdtemp(join(tmpdir(), "sunshine-custom-responses-"));
   const api = await createOpenAIResponsesServer();
   const client = new BridgeClient({ HOME: home, USERPROFILE: home });
   t.after(async () => {
@@ -2128,7 +2128,7 @@ test("omits explicit cache mode for custom OpenAI Responses endpoints", async (t
 });
 
 test("preserves explicit cache mode for the official OpenAI Responses endpoint", async (t) => {
-  const home = await mkdtemp(join(tmpdir(), "aether-official-responses-"));
+  const home = await mkdtemp(join(tmpdir(), "sunshine-official-responses-"));
   const api = await createOpenAIResponsesServer();
   const client = new BridgeClient({
     HOME: home,

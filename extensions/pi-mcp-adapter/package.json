@@ -1,6 +1,6 @@
 {
   "name": "pi-mcp-adapter",
-  "version": "2.26.0-aether.1",
+  "version": "2.26.0-sunshine.1",
   "description": "MCP (Model Context Protocol) adapter extension for Pi coding agent",
   "type": "module",
   "types": "./index.ts",
@@ -62,18 +62,18 @@
     ],
     "video": "https://github.com/nicobailon/pi-mcp-adapter/raw/refs/heads/main/pi-mcp.mp4"
   },
-  "aether": {
+  "sunshine": {
     "api": {
       "min": 2,
       "max": 2
     },
     "extensions": [
-      "./aether.ts"
+      "./sunshine.ts"
     ]
   },
   "files": [
-    "aether-bridge.ts",
-    "aether.ts",
+    "sunshine-bridge.ts",
+    "sunshine.ts",
     "cli.js",
     "agent-dir.ts",
     "index.ts",

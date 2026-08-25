@@ -1,7 +1,7 @@
 //
 //  TerminalEmulator.swift
 //  MinisApp
-//  Adapted for Aether from OpenMinis (GPL-3.0).
+//  Adapted for Sunshine from OpenMinis (GPL-3.0).
 //
 //  Core terminal emulator: connects ANSIParser → TerminalBuffer, handles all sequences
 //

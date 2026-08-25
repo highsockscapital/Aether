@@ -24,7 +24,7 @@ kotlin {
             freeCompilerArgs += "-Xoverride-konan-properties=minVersion.ios=17.0"
         }
         binaries.framework {
-            baseName = "AetherShared"
+            baseName = "SunshineShared"
             isStatic = true
         }
     }
@@ -75,7 +75,7 @@ room {
 }
 
 android {
-    namespace = "com.zhousl.aether.shared"
+    namespace = "com.highsockscapital.sunshine.shared"
     compileSdk = 36
 
     defaultConfig {
@@ -90,6 +90,6 @@ android {
 
 compose.resources {
     publicResClass = true
-    packageOfResClass = "com.zhousl.aether.shared.resources"
+    packageOfResClass = "com.highsockscapital.sunshine.shared.resources"
     generateResClass = always
 }

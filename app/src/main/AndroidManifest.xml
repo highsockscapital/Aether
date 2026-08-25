@@ -22,7 +22,7 @@
     </queries>
 
     <application
-        android:name=".AetherApplication"
+        android:name=".SunshineApplication"
         android:allowBackup="true"
         android:icon="${appIcon}"
         android:label="${appLabel}"
@@ -30,7 +30,7 @@
         android:roundIcon="${appRoundIcon}"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
-        android:theme="@style/Theme.Aether">
+        android:theme="@style/Theme.Sunshine">
         <service
             android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
             android:enabled="false"
@@ -46,7 +46,7 @@
             android:label="${appLabel}"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Theme.Aether">
+            android:theme="@style/Theme.Sunshine">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -93,7 +93,7 @@
 
 
         <service
-            android:name=".AetherForegroundService"
+            android:name=".SunshineForegroundService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
     </application>

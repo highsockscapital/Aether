@@ -1,33 +1,33 @@
-export type AetherJsonObject = Record<string, unknown>;
+export type SunshineJsonObject = Record<string, unknown>;
 
-export type AetherView =
-  | AetherJsonObject
-  | AetherView[]
+export type SunshineView =
+  | SunshineJsonObject
+  | SunshineView[]
   | string
   | null
   | undefined;
 
-export type AetherRenderContext = AetherJsonObject & {
+export type SunshineRenderContext = SunshineJsonObject & {
   extension: {
     id: string;
     name: string;
     path: string;
   };
-  storage: AetherJsonObject;
+  storage: SunshineJsonObject;
 };
 
-export interface AetherSurfaceDefinition {
+export interface SunshineSurfaceDefinition {
   id?: string;
   order?: number;
   render?:
-    | AetherView
+    | SunshineView
     | ((
-      context: AetherRenderContext,
-    ) => AetherView | Promise<AetherView>);
-  tree?: AetherView;
+      context: SunshineRenderContext,
+    ) => SunshineView | Promise<SunshineView>);
+  tree?: SunshineView;
 }
 
-export type AetherSettingType =
+export type SunshineSettingType =
   | "text"
   | "password"
   | "textarea"
@@ -58,26 +58,26 @@ export type AetherSettingType =
   | "result-card"
   | "callout";
 
-export interface AetherSettingOption {
+export interface SunshineSettingOption {
   value: string;
   label: string;
 }
 
-export interface AetherSettingActionItem {
+export interface SunshineSettingActionItem {
   label: string;
   action: string;
-  args?: AetherJsonObject;
+  args?: SunshineJsonObject;
   category?: string;
   tone?: "primary" | "neutral" | "danger";
   enabled?: boolean;
 }
 
-export interface AetherSettingDetailItem {
+export interface SunshineSettingDetailItem {
   label: string;
   value: string;
 }
 
-export interface AetherSettingDefinition {
+export interface SunshineSettingDefinition {
   id: string;
   label?: string;
   title?: string;
@@ -86,15 +86,15 @@ export interface AetherSettingDefinition {
   tag?: string;
   pill?: string;
   badge?: string;
-  type?: AetherSettingType;
+  type?: SunshineSettingType;
   default?: string | number | boolean;
   placeholder?: string;
-  options?: AetherSettingOption[];
+  options?: SunshineSettingOption[];
   min?: number;
   max?: number;
   step?: number;
   action?: string;
-  args?: AetherJsonObject;
+  args?: SunshineJsonObject;
   category?: string;
   url?: string;
   icon?: string;
@@ -105,28 +105,28 @@ export interface AetherSettingDefinition {
   toggleAction?: string;
   editAction?: string;
   editCategory?: string;
-  editArgs?: AetherJsonObject;
+  editArgs?: SunshineJsonObject;
   deleteAction?: string;
-  deleteArgs?: AetherJsonObject;
+  deleteArgs?: SunshineJsonObject;
   expanded?: boolean;
-  actions?: AetherSettingActionItem[];
-  details?: AetherSettingDetailItem[];
+  actions?: SunshineSettingActionItem[];
+  details?: SunshineSettingDetailItem[];
   resultText?: string;
   result?: string;
   buttonLabel?: string;
   multiline?: boolean;
   secret?: boolean;
-  settings?: AetherSettingDefinition[];
+  settings?: SunshineSettingDefinition[];
 }
 
-export interface AetherSettingsSection {
+export interface SunshineSettingsSection {
   id?: string;
   title?: string;
   description?: string;
-  settings: AetherSettingDefinition[];
+  settings: SunshineSettingDefinition[];
 }
 
-export interface AetherSettingsDefinition {
+export interface SunshineSettingsDefinition {
   id: string;
   title: string;
   subtitle?: string;
@@ -135,12 +135,12 @@ export interface AetherSettingsDefinition {
   trailingIcon?: string;
   trailingAction?: string;
   trailingCategory?: string;
-  trailingArgs?: AetherJsonObject;
-  sections?: AetherSettingsSection[];
-  categories?: AetherSettingsCategory[];
+  trailingArgs?: SunshineJsonObject;
+  sections?: SunshineSettingsSection[];
+  categories?: SunshineSettingsCategory[];
 }
 
-export interface AetherSettingsCategory {
+export interface SunshineSettingsCategory {
   id: string;
   title: string;
   subtitle?: string;
@@ -149,168 +149,168 @@ export interface AetherSettingsCategory {
   trailingIcon?: string;
   trailingAction?: string;
   trailingCategory?: string;
-  trailingArgs?: AetherJsonObject;
+  trailingArgs?: SunshineJsonObject;
   hidden?: boolean;
-  sections: AetherSettingsSection[];
+  sections: SunshineSettingsSection[];
 }
 
-export interface AetherComposerMenuItemDefinition {
+export interface SunshineComposerMenuItemDefinition {
   id: string;
   title: string;
   subtitle?: string;
   icon?: string;
   order?: number;
   action?: string;
-  args?: AetherJsonObject;
+  args?: SunshineJsonObject;
   selected?: boolean;
 }
 
-export interface AetherMessageTypeDefinition {
+export interface SunshineMessageTypeDefinition {
   type: string;
   title?: string;
   icon?: string;
   render:
-    | AetherView
-    | ((context: AetherRenderContext & { message: AetherJsonObject }) => AetherView | Promise<AetherView>);
+    | SunshineView
+    | ((context: SunshineRenderContext & { message: SunshineJsonObject }) => SunshineView | Promise<SunshineView>);
 }
 
-export type AetherComponentMode =
+export type SunshineComponentMode =
   | "before"
   | "after"
   | "replace"
   | "wrap"
   | "hide";
 
-export interface AetherComponentDefinition extends AetherSurfaceDefinition {
-  mode?: AetherComponentMode;
+export interface SunshineComponentDefinition extends SunshineSurfaceDefinition {
+  mode?: SunshineComponentMode;
 }
 
-export interface AetherActionContext extends AetherRenderContext {
+export interface SunshineActionContext extends SunshineRenderContext {
   action: string;
 }
 
-export interface AetherEventContext extends AetherRenderContext {
+export interface SunshineEventContext extends SunshineRenderContext {
   event: string;
 }
 
-export interface AetherUi {
+export interface SunshineUi {
   node(
     type: string,
-    properties?: AetherJsonObject,
-    children?: AetherView[],
-  ): AetherJsonObject;
-  text(text: string, properties?: AetherJsonObject): AetherJsonObject;
-  code(text: string, properties?: AetherJsonObject): AetherJsonObject;
+    properties?: SunshineJsonObject,
+    children?: SunshineView[],
+  ): SunshineJsonObject;
+  text(text: string, properties?: SunshineJsonObject): SunshineJsonObject;
+  code(text: string, properties?: SunshineJsonObject): SunshineJsonObject;
   column(
-    children: AetherView[],
-    properties?: AetherJsonObject,
-  ): AetherJsonObject;
+    children: SunshineView[],
+    properties?: SunshineJsonObject,
+  ): SunshineJsonObject;
   row(
-    children: AetherView[],
-    properties?: AetherJsonObject,
-  ): AetherJsonObject;
+    children: SunshineView[],
+    properties?: SunshineJsonObject,
+  ): SunshineJsonObject;
   box(
-    children: AetherView[],
-    properties?: AetherJsonObject,
-  ): AetherJsonObject;
+    children: SunshineView[],
+    properties?: SunshineJsonObject,
+  ): SunshineJsonObject;
   card(
-    children: AetherView[],
-    properties?: AetherJsonObject,
-  ): AetherJsonObject;
+    children: SunshineView[],
+    properties?: SunshineJsonObject,
+  ): SunshineJsonObject;
   button(
     label: string,
     action: string,
-    properties?: AetherJsonObject,
-  ): AetherJsonObject;
+    properties?: SunshineJsonObject,
+  ): SunshineJsonObject;
   iconButton(
     icon: string,
     action: string,
-    properties?: AetherJsonObject,
-  ): AetherJsonObject;
+    properties?: SunshineJsonObject,
+  ): SunshineJsonObject;
   switch(
     label: string,
     checked: boolean,
     action: string,
-    properties?: AetherJsonObject,
-  ): AetherJsonObject;
+    properties?: SunshineJsonObject,
+  ): SunshineJsonObject;
   input(
     value: string,
     action: string,
-    properties?: AetherJsonObject,
-  ): AetherJsonObject;
-  spacer(size?: number, properties?: AetherJsonObject): AetherJsonObject;
-  progress(value?: number, properties?: AetherJsonObject): AetherJsonObject;
-  web(properties: AetherJsonObject): AetherJsonObject;
-  core(properties?: AetherJsonObject): AetherJsonObject;
+    properties?: SunshineJsonObject,
+  ): SunshineJsonObject;
+  spacer(size?: number, properties?: SunshineJsonObject): SunshineJsonObject;
+  progress(value?: number, properties?: SunshineJsonObject): SunshineJsonObject;
+  web(properties: SunshineJsonObject): SunshineJsonObject;
+  core(properties?: SunshineJsonObject): SunshineJsonObject;
 }
 
-export interface AetherExtensionAPI {
+export interface SunshineExtensionAPI {
   readonly apiVersion: 2;
   readonly extension: {
     id: string;
     name: string;
     path: string;
   };
-  readonly ui: AetherUi;
+  readonly ui: SunshineUi;
   readonly host: {
     invoke(
       method: string,
-      args?: AetherJsonObject,
-    ): Promise<AetherJsonObject>;
+      args?: SunshineJsonObject,
+    ): Promise<SunshineJsonObject>;
   };
   readonly services: {
-    list(): Promise<AetherJsonObject>;
-    describe(service: string): Promise<AetherJsonObject>;
+    list(): Promise<SunshineJsonObject>;
+    describe(service: string): Promise<SunshineJsonObject>;
     invoke(
       service: string,
       method: string,
-      args?: AetherJsonObject,
-    ): Promise<AetherJsonObject>;
+      args?: SunshineJsonObject,
+    ): Promise<SunshineJsonObject>;
   };
   readonly state: {
-    get(path?: string): Promise<AetherJsonObject>;
-    patch(path: string, value: unknown): Promise<AetherJsonObject>;
+    get(path?: string): Promise<SunshineJsonObject>;
+    patch(path: string, value: unknown): Promise<SunshineJsonObject>;
     transaction(
       operations: Array<{
         op?: "set" | "remove";
         path: string;
         value?: unknown;
       }>,
-    ): Promise<AetherJsonObject>;
+    ): Promise<SunshineJsonObject>;
   };
   readonly storage: {
     get<T = unknown>(key: string, fallback?: T): T;
     set(key: string, value: unknown): void;
     delete(key: string): void;
     clear(): void;
-    snapshot(): AetherJsonObject;
+    snapshot(): SunshineJsonObject;
   };
   readonly messages: {
-    append(type: string, payload?: AetherJsonObject, text?: string): Promise<AetherJsonObject>;
+    append(type: string, payload?: SunshineJsonObject, text?: string): Promise<SunshineJsonObject>;
   };
   registerSurface(
     slot: string,
     definition:
-      | AetherSurfaceDefinition
-      | AetherView
+      | SunshineSurfaceDefinition
+      | SunshineView
       | ((
-        context: AetherRenderContext,
-      ) => AetherView | Promise<AetherView>),
+        context: SunshineRenderContext,
+      ) => SunshineView | Promise<SunshineView>),
   ): () => void;
   registerComponent(
     target: string,
     definition:
-      | AetherComponentDefinition
-      | AetherView
+      | SunshineComponentDefinition
+      | SunshineView
       | ((
-        context: AetherRenderContext,
-      ) => AetherView | Promise<AetherView>),
+        context: SunshineRenderContext,
+      ) => SunshineView | Promise<SunshineView>),
   ): () => void;
-  registerSettings(definition: AetherSettingsDefinition): () => void;
-  registerComposerMenuItem(definition: AetherComposerMenuItemDefinition): () => void;
-  registerComposerMenu(definition: AetherComposerMenuItemDefinition): () => void;
-  registerMessageType(definition: AetherMessageTypeDefinition): () => void;
-  registerCustomMessage(definition: AetherMessageTypeDefinition): () => void;
+  registerSettings(definition: SunshineSettingsDefinition): () => void;
+  registerComposerMenuItem(definition: SunshineComposerMenuItemDefinition): () => void;
+  registerComposerMenu(definition: SunshineComposerMenuItemDefinition): () => void;
+  registerMessageType(definition: SunshineMessageTypeDefinition): () => void;
+  registerCustomMessage(definition: SunshineMessageTypeDefinition): () => void;
   registerToolTitle(
     toolName: string,
     runningTitle: string,
@@ -320,37 +320,37 @@ export interface AetherExtensionAPI {
   registerAction(
     id: string,
     handler: (
-      payload: AetherJsonObject,
-      context: AetherActionContext,
+      payload: SunshineJsonObject,
+      context: SunshineActionContext,
     ) => unknown | Promise<unknown>,
   ): () => void;
   on(
     event: string,
     handler: (
-      payload: AetherJsonObject,
-      context: AetherEventContext,
+      payload: SunshineJsonObject,
+      context: SunshineEventContext,
     ) => unknown | Promise<unknown>,
   ): () => void;
   intercept(
     operation: string,
     handler: (
-      payload: AetherJsonObject,
-      context: AetherEventContext,
+      payload: SunshineJsonObject,
+      context: SunshineEventContext,
     ) => unknown | Promise<unknown>,
   ): () => void;
   invalidate(): void;
   notify(message: string, level?: "info" | "warning" | "error"): void;
 }
 
-export type AetherExtensionFactory = (
-  api: AetherExtensionAPI,
+export type SunshineExtensionFactory = (
+  api: SunshineExtensionAPI,
 ) =>
   | void
   | (() => void | Promise<void>)
   | Promise<void | (() => void | Promise<void>)>;
 
-export declare const ui: AetherUi;
+export declare const ui: SunshineUi;
 
-export declare function defineAetherExtension<
-  T extends AetherExtensionFactory,
+export declare function defineSunshineExtension<
+  T extends SunshineExtensionFactory,
 >(factory: T): T;

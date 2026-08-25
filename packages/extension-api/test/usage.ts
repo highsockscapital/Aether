@@ -1,31 +1,31 @@
 import {
-  defineAetherExtension,
+  defineSunshineExtension,
   ui,
-  type AetherExtensionAPI,
-} from "@baimoqilin/aether-extension-api";
+  type SunshineExtensionAPI,
+} from "@highsockscapital/sunshine-extension-api";
 
-const factory = defineAetherExtension((aether) => {
-  aether.registerSurface("chat.composer.top", {
+const factory = defineSunshineExtension((sunshine) => {
+  sunshine.registerSurface("chat.composer.top", {
     render: ({ storage }) =>
       ui.card([
         ui.text(String(storage.count ?? 0)),
         ui.button("Increment", "increment"),
       ]),
   });
-  aether.registerAction("increment", () => {
-    const count = aether.storage.get("count", 0) + 1;
-    aether.storage.set("count", count);
+  sunshine.registerAction("increment", () => {
+    const count = sunshine.storage.get("count", 0) + 1;
+    sunshine.storage.set("count", count);
   });
-  aether.registerSettings({
+  sunshine.registerSettings({
     id: "preferences",
     title: "Preferences",
     categories: [{ id: "general", title: "General", sections: [{ settings: [{ id: "enabled", label: "Enabled", type: "toggle", default: true }] }] }],
   });
-  aether.registerComposerMenuItem({ id: "run", title: "Run", action: "run" });
-  aether.registerMessageType({ type: "demo", render: ({ message }) => ui.text(String(message.text ?? "")) });
-  aether.registerToolTitle("demo_search", "Searching demos", "Searched demos", 200);
-  aether.registerAction("message", () => aether.messages.append("demo", { text: "hello" }));
+  sunshine.registerComposerMenuItem({ id: "run", title: "Run", action: "run" });
+  sunshine.registerMessageType({ type: "demo", render: ({ message }) => ui.text(String(message.text ?? "")) });
+  sunshine.registerToolTitle("demo_search", "Searching demos", "Searched demos", 200);
+  sunshine.registerAction("message", () => sunshine.messages.append("demo", { text: "hello" }));
 });
 
-const acceptsApi = (_api: AetherExtensionAPI) => factory;
+const acceptsApi = (_api: SunshineExtensionAPI) => factory;
 void acceptsApi;

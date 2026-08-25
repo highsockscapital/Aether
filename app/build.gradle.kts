@@ -37,7 +37,7 @@ val nightlyKeystoreFile = localOrEnv("nightly.storeFile", "NIGHTLY_KEYSTORE_FILE
 val nightlyKeystorePassword = localOrEnv("nightly.storePassword", "NIGHTLY_KEYSTORE_PASSWORD")
 val nightlyKeyAlias = localOrEnv("nightly.keyAlias", "NIGHTLY_KEY_ALIAS")
 val nightlyKeyPassword = localOrEnv("nightly.keyPassword", "NIGHTLY_KEY_PASSWORD")
-val appVersionName = providers.gradleProperty("aether.versionName")
+val appVersionName = providers.gradleProperty("sunshine.versionName")
     .orNull
     ?.trim()
     ?.takeIf { it.isNotEmpty() }
@@ -104,11 +104,11 @@ abstract class SyncGeneratedSourceDirectory : Sync() {
 }
 
 android {
-    namespace = "com.zhousl.aether"
+    namespace = "com.highsockscapital.sunshine"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.baimoqilin.aether"
+        applicationId = "com.highsockscapital.sunshine"
         minSdk = 26
         // Alpine/Termux-style local runtimes install executable ELF files into app-private
         // storage. Android blocks execve() from that location for targetSdk >= 29.
@@ -157,7 +157,7 @@ android {
             initWith(getByName("debug"))
             applicationIdSuffix = ".nightly"
             matchingFallbacks += listOf("debug")
-            resValue("string", "nightly_app_name", "Aether Nightly")
+            resValue("string", "nightly_app_name", "Sunshine Nightly")
             buildConfigField("String", "UPDATE_CHANNEL", "\"nightly\"")
             manifestPlaceholders["appIcon"] = "@mipmap/ic_launcher_nightly"
             manifestPlaceholders["appRoundIcon"] = "@mipmap/ic_launcher_nightly_round"

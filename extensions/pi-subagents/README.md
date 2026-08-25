@@ -8,26 +8,26 @@
 
 ## About this repository
 
-This is the **Aether-enabled fork** of [pi-subagents](https://github.com/tintinweb/pi-subagents) by the [Aether](https://aether.baimoqilin.com) team. It tracks the upstream project and adds first-class support for running inside Aether, the mobile AI agent built on the Pi Coding Agent core:
+This is the **Sunshine-enabled fork** of [pi-subagents](https://github.com/tintinweb/pi-subagents) by the [Sunshine](https://sunshine.highsockscapital.com) team. It tracks the upstream project and adds first-class support for running inside Sunshine, the mobile AI agent built on the Pi Coding Agent core:
 
-- **Aether Script Mod** (`src/aether.ts`) — native mobile UI surfaces including live composer status widgets, conversation viewer overlays, and dedicated settings pages.
-- **Native prompt mentions** — `@handle message` prompt mentions routed through Aether's `before_send` hook directly to running or new subagent instances without a main-model turn.
+- **Sunshine Script Mod** (`src/sunshine.ts`) — native mobile UI surfaces including live composer status widgets, conversation viewer overlays, and dedicated settings pages.
+- **Native prompt mentions** — `@handle message` prompt mentions routed through Sunshine's `before_send` hook directly to running or new subagent instances without a main-model turn.
 - **Semantic tool titles** — registers human-friendly running and completed titles for `Agent`, `get_subagent_result`, and `steer_subagent`.
 
-The upstream project remains the source of truth for subagent execution and Pi-side behavior; this repository layers the Aether UI and runtime integration on top and stays rebased on upstream releases.
+The upstream project remains the source of truth for subagent execution and Pi-side behavior; this repository layers the Sunshine UI and runtime integration on top and stays rebased on upstream releases.
 
-## Aether integration
+## Sunshine integration
 
-When installed in Aether, this package loads a Script Extension (no Native Mod required). The Script Mod adapts the TUI-facing surfaces to Aether Script API v2:
+When installed in Sunshine, this package loads a Script Extension (no Native Mod required). The Script Mod adapts the TUI-facing surfaces to Sunshine Script API v2:
 
 - **Live agent roster & FleetView**: Persistent, interactive status cards rendered above the composer displaying active subagent progress, turn counters, token usage, and live activity.
 - **Conversation viewer overlay**: Full overlay transcript viewer (`app.overlay`) with live auto-refresh, inline steering field, and subagent Stop controls.
 - **Native settings & Agent management**: Dual settings pages for runtime options (`.pi/subagents.json`) and agent definition management (enabling, disabling, reloading, and drafting `.pi/agents/*.md`).
 - **Prompt mentions**: Typing `@handle message` is intercepted before sending to dispatch directly to subagents without consuming a main-model turn.
-- **Styled transcript cards**: Background completions, results, and conversation exports render as native Aether message cards.
-- **Semantic tool titles**: Subagent tool invocations display clean status titles via `aether.registerToolTitle`.
+- **Styled transcript cards**: Background completions, results, and conversation exports render as native Sunshine message cards.
+- **Semantic tool titles**: Subagent tool invocations display clean status titles via `sunshine.registerToolTitle`.
 
-Settings and agent definitions stay in full sync with standard Pi files. Script changes hot-reload without restarting Aether.
+Settings and agent definitions stay in full sync with standard Pi files. Script changes hot-reload without restarting Sunshine.
 
 [![npm version](https://img.shields.io/npm/v/@tintinweb/pi-subagents?style=for-the-badge)](https://www.npmjs.com/package/@tintinweb/pi-subagents)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -73,9 +73,9 @@ Or load directly for development:
 pi -e ./src/index.ts
 ```
 
-### In Aether
+### In Sunshine
 
-Download the release package from the [Releases page](https://github.com/AetherExtensions/pi-subagents/releases) of this repository, then import it in Aether via **Settings → Extensions → Import extension**. The package includes the Pi extension and the Aether Script Mod in one zip; Script updates hot-reload without restarting Aether.
+Download the release package from the [Releases page](https://github.com/SunshineExtensions/pi-subagents/releases) of this repository, then import it in Sunshine via **Settings → Extensions → Import extension**. The package includes the Pi extension and the Sunshine Script Mod in one zip; Script updates hot-reload without restarting Sunshine.
 
 ## Quick Start
 

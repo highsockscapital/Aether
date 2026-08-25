@@ -10,7 +10,7 @@ mkdir -p "$destination"
 
 rootfs="$destination/root.tar.gz"
 if [ ! -f "$rootfs" ] || [ "$(shasum -a 256 "$rootfs" | awk '{print $1}')" != "$rootfs_sha256" ]; then
-    temporary_rootfs=$(mktemp "${TMPDIR:-/tmp}/aether-rootfs.XXXXXX")
+    temporary_rootfs=$(mktemp "${TMPDIR:-/tmp}/sunshine-rootfs.XXXXXX")
     trap 'rm -f "$temporary_rootfs"' EXIT INT TERM
     curl --fail --location --retry 3 --output "$temporary_rootfs" "$rootfs_url"
     actual_sha256=$(shasum -a 256 "$temporary_rootfs" | awk '{print $1}')

@@ -1,7 +1,7 @@
 //
 //  TerminalCanvasView.swift
 //  MinisApp
-//  Adapted for Aether from OpenMinis (GPL-3.0).
+//  Adapted for Sunshine from OpenMinis (GPL-3.0).
 //
 //  UIScrollView-backed terminal renderer using UITextView for native text selection.
 //  Uses NSAttributedString for ANSI color rendering with a cursor overlay.

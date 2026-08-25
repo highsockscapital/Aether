@@ -1,16 +1,16 @@
 import FileProvider
 import UniformTypeIdentifiers
 
-private enum AetherFileProviderStorage {
-    static let appGroupIdentifier = "group.com.baimoqilin.aether"
+private enum SunshineFileProviderStorage {
+    static let appGroupIdentifier = "group.com.highsockscapital.sunshine"
 
     static let root: URL = {
         guard let container = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: appGroupIdentifier
         ) else {
-            fatalError("Aether File Provider cannot access its App Group container.")
+            fatalError("Sunshine File Provider cannot access its App Group container.")
         }
-        let root = container.appendingPathComponent("AetherAlpine/data", isDirectory: true)
+        let root = container.appendingPathComponent("SunshineAlpine/data", isDirectory: true)
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         return root.standardizedFileURL
     }()
@@ -58,7 +58,7 @@ final class FileProviderExtension: NSObject, NSFileProviderReplicatedExtension {
         completionHandler: @escaping (NSFileProviderItem?, Error?) -> Void
     ) -> Progress {
         do {
-            let url = try AetherFileProviderStorage.url(for: identifier)
+            let url = try SunshineFileProviderStorage.url(for: identifier)
             guard FileManager.default.fileExists(atPath: url.path) else {
                 throw NSFileProviderError(.noSuchItem)
             }
@@ -76,7 +76,7 @@ final class FileProviderExtension: NSObject, NSFileProviderReplicatedExtension {
         completionHandler: @escaping (URL?, NSFileProviderItem?, Error?) -> Void
     ) -> Progress {
         do {
-            let source = try AetherFileProviderStorage.url(for: itemIdentifier)
+            let source = try SunshineFileProviderStorage.url(for: itemIdentifier)
             guard FileManager.default.fileExists(atPath: source.path) else {
                 throw NSFileProviderError(.noSuchItem)
             }
@@ -99,7 +99,7 @@ final class FileProviderExtension: NSObject, NSFileProviderReplicatedExtension {
         completionHandler: @escaping (NSFileProviderItem?, NSFileProviderItemFields, Bool, Error?) -> Void
     ) -> Progress {
         do {
-            let parent = try AetherFileProviderStorage.url(for: itemTemplate.parentItemIdentifier)
+            let parent = try SunshineFileProviderStorage.url(for: itemTemplate.parentItemIdentifier)
             let destination = parent.appendingPathComponent(itemTemplate.filename)
             guard !FileManager.default.fileExists(atPath: destination.path) else {
                 throw CocoaError(.fileWriteFileExists)
@@ -128,11 +128,11 @@ final class FileProviderExtension: NSObject, NSFileProviderReplicatedExtension {
         completionHandler: @escaping (NSFileProviderItem?, NSFileProviderItemFields, Bool, Error?) -> Void
     ) -> Progress {
         do {
-            let source = try AetherFileProviderStorage.url(for: item.itemIdentifier)
+            let source = try SunshineFileProviderStorage.url(for: item.itemIdentifier)
             guard FileManager.default.fileExists(atPath: source.path) else {
                 throw NSFileProviderError(.noSuchItem)
             }
-            let parent = try AetherFileProviderStorage.url(for: item.parentItemIdentifier)
+            let parent = try SunshineFileProviderStorage.url(for: item.parentItemIdentifier)
             let destination = parent.appendingPathComponent(item.filename)
             var current = source
             if source.standardizedFileURL != destination.standardizedFileURL {
@@ -163,7 +163,7 @@ final class FileProviderExtension: NSObject, NSFileProviderReplicatedExtension {
         completionHandler: @escaping (Error?) -> Void
     ) -> Progress {
         do {
-            let url = try AetherFileProviderStorage.url(for: identifier)
+            let url = try SunshineFileProviderStorage.url(for: identifier)
             guard identifier != .rootContainer else {
                 throw CocoaError(.fileWriteNoPermission)
             }
@@ -198,7 +198,7 @@ final class FileProviderEnumerator: NSObject, NSFileProviderEnumerator {
         startingAt page: NSFileProviderPage
     ) {
         do {
-            let base = try AetherFileProviderStorage.url(for: identifier)
+            let base = try SunshineFileProviderStorage.url(for: identifier)
             let urls = try FileManager.default.contentsOfDirectory(
                 at: base,
                 includingPropertiesForKeys: [.contentTypeKey, .contentModificationDateKey, .fileSizeKey],
@@ -225,7 +225,7 @@ final class FileProviderEnumerator: NSObject, NSFileProviderEnumerator {
     func invalidate() {}
 
     private static func syncAnchor() -> NSFileProviderSyncAnchor {
-        NSFileProviderSyncAnchor(Data("aether-local-v1".utf8))
+        NSFileProviderSyncAnchor(Data("sunshine-local-v1".utf8))
     }
 }
 
@@ -246,17 +246,17 @@ final class FileProviderItem: NSObject, NSFileProviderItem {
     }
 
     var itemIdentifier: NSFileProviderItemIdentifier {
-        AetherFileProviderStorage.identifier(for: url)
+        SunshineFileProviderStorage.identifier(for: url)
     }
 
     var parentItemIdentifier: NSFileProviderItemIdentifier {
         itemIdentifier == .rootContainer
             ? .rootContainer
-            : AetherFileProviderStorage.parentIdentifier(for: url)
+            : SunshineFileProviderStorage.parentIdentifier(for: url)
     }
 
     var filename: String {
-        itemIdentifier == .rootContainer ? "Aether" : url.lastPathComponent
+        itemIdentifier == .rootContainer ? "Sunshine" : url.lastPathComponent
     }
 
     var contentType: UTType {

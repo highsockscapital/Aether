@@ -66,7 +66,7 @@ import {
 	type RecencyFilter,
 	type ResearchArtifact,
 } from "./source-check.ts";
-import { appendAetherWebMessage } from "./aether.ts";
+import { appendSunshineWebMessage } from "./sunshine.ts";
 
 type ExtensionTheme = ExtensionContext["ui"]["theme"];
 
@@ -891,7 +891,7 @@ export default function (pi: ExtensionAPI) {
 					},
 					{ triggerTurn: true },
 				);
-				void appendAetherWebMessage("web-search-content-ready", {
+				void appendSunshineWebMessage("web-search-content-ready", {
 					fetchId,
 					successful: ok,
 					total: fetched.length,
@@ -910,7 +910,7 @@ export default function (pi: ExtensionAPI) {
 						},
 						{ triggerTurn: false },
 					);
-					void appendAetherWebMessage("web-search-error", { fetchId, error: message }, `Content fetch failed: ${message}`);
+					void appendSunshineWebMessage("web-search-error", { fetchId, error: message }, `Content fetch failed: ${message}`);
 				}
 			})
 			.finally(() => { pendingFetches.delete(fetchId); });
@@ -2896,7 +2896,7 @@ export default function (pi: ExtensionAPI) {
 					&& typeof (payload.details.summary as Record<string, unknown>).text === "string"
 					? String((payload.details.summary as Record<string, unknown>).text)
 					: `Completed ${payload.details.successfulQueries}/${payload.details.queryCount} queries with ${payload.details.totalResults} results.`;
-				void appendAetherWebMessage("web-search-results", payload.details, completedText);
+				void appendSunshineWebMessage("web-search-results", payload.details, completedText);
 			}
 
 			try {
@@ -3142,7 +3142,7 @@ export default function (pi: ExtensionAPI) {
 				display: true,
 				details: { workflow: newWorkflow },
 			}, { triggerTurn: false, deliverAs: "followUp" });
-			void appendAetherWebMessage("curator-config", { workflow: newWorkflow }, label);
+			void appendSunshineWebMessage("curator-config", { workflow: newWorkflow }, label);
 		},
 	});
 
@@ -3156,7 +3156,7 @@ export default function (pi: ExtensionAPI) {
 					display: true,
 					details: { available: false, cookieAccessAllowed: false },
 				}, { triggerTurn: true, deliverAs: "followUp" });
-				void appendAetherWebMessage("google-account", { available: false, cookieAccessAllowed: false },
+				void appendSunshineWebMessage("google-account", { available: false, cookieAccessAllowed: false },
 					"Gemini Web browser cookie access is disabled.");
 				return;
 			}
@@ -3173,7 +3173,7 @@ export default function (pi: ExtensionAPI) {
 					display: true,
 					details: { available: false, cookieAccessAllowed: true, diagnostic },
 				}, { triggerTurn: true, deliverAs: "followUp" });
-				void appendAetherWebMessage("google-account", {
+				void appendSunshineWebMessage("google-account", {
 					available: false,
 					cookieAccessAllowed: true,
 					diagnostic,
@@ -3192,7 +3192,7 @@ export default function (pi: ExtensionAPI) {
 				display: true,
 				details: { available: true, email: email ?? null },
 			}, { triggerTurn: true, deliverAs: "followUp" });
-			void appendAetherWebMessage("google-account", { available: true, email: email ?? null }, text);
+			void appendSunshineWebMessage("google-account", { available: true, email: email ?? null }, text);
 		},
 	});
 

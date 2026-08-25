@@ -1,5 +1,5 @@
 name: Feature request / 功能建议
-description: Suggest an improvement to Aether / 为 Aether 提出改进建议
+description: Suggest an improvement to Sunshine / 为 Sunshine 提出改进建议
 title: "[Feature Request] "
 labels:
   - enhancement
@@ -14,7 +14,7 @@ body:
           required: true
         - label: I have searched existing issues and found no relevant request. / 我已搜索过 Issue，且未找到相关的功能建议。
           required: true
-        - label: I have updated to the latest Aether Nightly and confirmed that this feature is not already available. / 我已更新至最新 Aether Nightly，并确认该功能尚未提供。
+        - label: I have updated to the latest Sunshine Nightly and confirmed that this feature is not already available. / 我已更新至最新 Sunshine Nightly，并确认该功能尚未提供。
           required: true
         - label: I have removed secrets and personal information. / 我已移除密钥和个人信息。
           required: true

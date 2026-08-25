@@ -3,12 +3,12 @@ import { flushCompileCache } from "node:module";
 import { createInterface } from "node:readline";
 import { stdin as input, stdout as output, stderr } from "node:process";
 import {
-  aetherAppExtensionSnapshot,
-  configureAetherExtensionTransport,
-  dispatchAetherAppExtensionEvent,
-  invokeAetherAppExtensionAction,
-  loadAetherAppExtensions,
-} from "./aether-extensions.js";
+  sunshineAppExtensionSnapshot,
+  configureSunshineExtensionTransport,
+  dispatchSunshineAppExtensionEvent,
+  invokeSunshineAppExtensionAction,
+  loadSunshineAppExtensions,
+} from "./sunshine-extensions.js";
 import {
   installExtensionPackage,
   listDiscoveredSkills,
@@ -111,13 +111,13 @@ function requestHost(method: string, args: JsonObject): Promise<JsonObject> {
   const requestId = operationRequestId && activeOperationRequestIds.has(operationRequestId)
     ? operationRequestId
     : subscriberRequestIds.values().next().value;
-  if (!requestId) throw new Error("The Aether app host is not subscribed.");
-  const callId = `aether-host-${Date.now()}-${++hostCallCounter}`;
-  writeEvent(requestId, "aether_host_call", { call_id: callId, method, args });
+  if (!requestId) throw new Error("The Sunshine app host is not subscribed.");
+  const callId = `sunshine-host-${Date.now()}-${++hostCallCounter}`;
+  writeEvent(requestId, "sunshine_host_call", { call_id: callId, method, args });
   return new Promise<JsonObject>((resolve, reject) => {
     const timeout = setTimeout(() => {
       pendingHostCalls.delete(callId);
-      reject(new Error(`Aether host call timed out: ${method}`));
+      reject(new Error(`Sunshine host call timed out: ${method}`));
     }, 2 * 60 * 1000);
     pendingHostCalls.set(callId, { resolve, reject, timeout });
   });
@@ -139,17 +139,17 @@ function resolveHostCall(payload: JsonObject): boolean {
   pendingHostCalls.delete(callId);
   clearTimeout(pending.timeout);
   if (asBoolean(payload.ok, true)) pending.resolve(asObject(payload.result));
-  else pending.reject(new Error(asString(payload.error, "Aether host call failed.")));
+  else pending.reject(new Error(asString(payload.error, "Sunshine host call failed.")));
   return true;
 }
 
-configureAetherExtensionTransport({
+configureSunshineExtensionTransport({
   requestHost,
   invalidate(version) {
-    emitSubscriberEvent("aether_invalidated", { version });
+    emitSubscriberEvent("sunshine_invalidated", { version });
   },
   notify(message, level) {
-    emitSubscriberEvent("aether_notification", { message, level });
+    emitSubscriberEvent("sunshine_notification", { message, level });
   },
 });
 
@@ -176,7 +176,7 @@ async function installedPackagesPayload(): Promise<JsonObject> {
       version: installedPackage.version,
       description: installedPackage.description,
       extension_count: installedPackage.extensionCount,
-      aether_extension_count: installedPackage.aetherExtensionCount,
+      sunshine_extension_count: installedPackage.sunshineExtensionCount,
       native_entrypoint_count: installedPackage.nativeEntrypointCount,
       skill_count: installedPackage.skillCount,
       prompt_count: installedPackage.promptCount,
@@ -186,12 +186,12 @@ async function installedPackagesPayload(): Promise<JsonObject> {
   };
 }
 
-async function reloadAether(id: string, payload: JsonObject): Promise<JsonObject> {
+async function reloadSunshine(id: string, payload: JsonObject): Promise<JsonObject> {
   return runOperation(id, async () => {
-    const result = await loadAetherAppExtensions(process.cwd(), loadOptions(payload));
+    const result = await loadSunshineAppExtensions(process.cwd(), loadOptions(payload));
     return {
       ...result,
-      snapshot: await aetherAppExtensionSnapshot(asObject(payload.context)),
+      snapshot: await sunshineAppExtensionSnapshot(asObject(payload.context)),
     };
   });
 }
@@ -204,8 +204,8 @@ async function packageOperation(
 ): Promise<JsonObject> {
   const source = asString(payload.source).trim();
   await operation(process.cwd(), source);
-  const aetherReload = await runOperation(id, () =>
-    loadAetherAppExtensions(process.cwd(), loadOptions(payload))
+  const sunshineReload = await runOperation(id, () =>
+    loadSunshineAppExtensions(process.cwd(), loadOptions(payload))
   );
   return {
     ...result,
@@ -215,8 +215,8 @@ async function packageOperation(
       succeeded: true,
       session_count: 0,
       sessions: [],
-      aether_reload: aetherReload,
-      aether: await aetherAppExtensionSnapshot(),
+      sunshine_reload: sunshineReload,
+      sunshine: await sunshineAppExtensionSnapshot(),
     },
   };
 }
@@ -291,56 +291,56 @@ async function handleRequest(request: BridgeRequest): Promise<void> {
       ));
       return;
     case "reload_all_extensions": {
-      const aetherReload = await runOperation(id, () =>
-        loadAetherAppExtensions(process.cwd(), loadOptions(payload))
+      const sunshineReload = await runOperation(id, () =>
+        loadSunshineAppExtensions(process.cwd(), loadOptions(payload))
       );
       writeResponse(id, {
         succeeded: true,
         session_count: 0,
         sessions: [],
-        aether_reload: aetherReload,
-        aether: await aetherAppExtensionSnapshot(),
+        sunshine_reload: sunshineReload,
+        sunshine: await sunshineAppExtensionSnapshot(),
       });
       return;
     }
-    case "reload_aether_extensions":
-      writeResponse(id, await reloadAether(id, payload));
+    case "reload_sunshine_extensions":
+      writeResponse(id, await reloadSunshine(id, payload));
       return;
-    case "get_aether_extensions":
+    case "get_sunshine_extensions":
       writeResponse(id, await runOperation(id, async () => ({
-        snapshot: await aetherAppExtensionSnapshot(asObject(payload.context)),
+        snapshot: await sunshineAppExtensionSnapshot(asObject(payload.context)),
       })));
       return;
-    case "invoke_aether_extension_action":
+    case "invoke_sunshine_extension_action":
       writeResponse(id, await runOperation(id, async () => ({
-        ...(await invokeAetherAppExtensionAction(
+        ...(await invokeSunshineAppExtensionAction(
           asString(payload.extension_id),
           asString(payload.action),
           asObject(payload.args),
           asObject(payload.context),
         )),
-        snapshot: await aetherAppExtensionSnapshot(asObject(payload.context)),
+        snapshot: await sunshineAppExtensionSnapshot(asObject(payload.context)),
       })));
       return;
-    case "dispatch_aether_extension_event":
+    case "dispatch_sunshine_extension_event":
       writeResponse(id, await runOperation(id, async () => ({
-        ...(await dispatchAetherAppExtensionEvent(
+        ...(await dispatchSunshineAppExtensionEvent(
           asString(payload.event),
           asObject(payload.data),
           asObject(payload.context),
         )),
-        snapshot: await aetherAppExtensionSnapshot(asObject(payload.context)),
+        snapshot: await sunshineAppExtensionSnapshot(asObject(payload.context)),
       })));
       return;
-    case "subscribe_aether_extensions":
+    case "subscribe_sunshine_extensions":
       subscriberRequestIds.add(id);
-      writeEvent(id, "aether_invalidated", { subscribed: true });
+      writeEvent(id, "sunshine_invalidated", { subscribed: true });
       return;
-    case "unsubscribe_aether_extensions":
+    case "unsubscribe_sunshine_extensions":
       subscriberRequestIds.delete(asString(payload.request_id, id));
       writeResponse(id, { unsubscribed: true });
       return;
-    case "aether_host_result":
+    case "sunshine_host_result":
       writeResponse(id, { accepted: resolveHostCall(payload) });
       return;
     default:

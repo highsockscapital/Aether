@@ -1,6 +1,6 @@
 {
   "name": "@tintinweb/pi-subagents",
-  "version": "0.16.1-aether.1",
+  "version": "0.16.1-sunshine.1",
   "description": "A pi extension extension that brings smart Claude Code-style autonomous sub-agents to pi.",
   "author": "tintinweb",
   "license": "MIT",
@@ -61,13 +61,13 @@
     "video": "https://github.com/tintinweb/pi-subagents/raw/master/media/demo.mp4",
     "image": "https://github.com/tintinweb/pi-subagents/raw/master/media/screenshot.png"
   },
-  "aether": {
+  "sunshine": {
     "api": {
       "min": 2,
       "max": 2
     },
     "extensions": [
-      "./src/aether.ts"
+      "./src/sunshine.ts"
     ]
   }
 }

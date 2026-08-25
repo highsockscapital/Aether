@@ -59,7 +59,7 @@ const commonOptions = {
   minify: true,
   legalComments: "none",
   banner: {
-    js: "import { createRequire as __aetherCreateRequire } from 'node:module';const require = __aetherCreateRequire(import.meta.url);",
+    js: "import { createRequire as __sunshineCreateRequire } from 'node:module';const require = __sunshineCreateRequire(import.meta.url);",
   },
 };
 
