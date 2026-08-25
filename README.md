@@ -1,6 +1,6 @@
 # 🍊 Sunshine (`sunshine-app`)
 
-> *"A good housewife of the command line, and your sophisticated, playful Parisienne terminal agent."*
+> *"A good housewife of the command line, and your sophisticated, playful terminal agent."*
 
 **Sunshine** is a local-first, on-device Android terminal agent built to keep your developer workspace impeccably organized. Forked from [Zhou-Shilin/Aether](https://github.com/Zhou-Shilin/Aether), Sunshine acts as an autonomous dev companion—filing issues, managing builds, and shipping compiled artifacts straight to your device.
 
