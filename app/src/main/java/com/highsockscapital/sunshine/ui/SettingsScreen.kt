@@ -6220,7 +6220,7 @@ private fun AlpineSettingsPage(
                 CardDivider()
                 AlpineProfileRow(
                     title = stringResource(R.string.settings_git_ripgrep_tools),
-                    subtitle = "git, ripgrep",
+                    subtitle = "git, ripgrep, fd, gh, curl, jq",
                     profileState = packageProfiles["git_search"],
                     installProgress = installProgress["git_search"],
                     enabled = setupState.isReady,

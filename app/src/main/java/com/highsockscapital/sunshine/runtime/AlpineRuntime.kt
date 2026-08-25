@@ -524,6 +524,7 @@ class AlpineRuntime(
 
         ensureWorkspace()
         ensureGuestNetworkConfig()
+        val effectiveWorkingDirectory = ensureGuestWorkingDirectory(workingDirectory)
         val runId = nextRunId()
         val runDir = File(runtimeRoot, "runs/$runId").apply { mkdirs() }
         val stdoutFile = File(runDir, "stdout.log")
@@ -539,7 +540,7 @@ class AlpineRuntime(
         runs[runId] = run
 
         val process = runCatching {
-            buildAlpineProcess(command, workingDirectory)
+            buildAlpineProcess(command, effectiveWorkingDirectory)
                 .redirectOutput(stdoutFile)
                 .redirectError(stderrFile)
                 .start()
@@ -705,6 +706,28 @@ class AlpineRuntime(
     ).apply {
         isDaemon = true
         start()
+    }
+
+    /**
+     * proot fails with an opaque "Working directory does not exist" error when
+     * passed -w with a guest directory that does not exist yet. The Termux bash
+     * tool pre-creates its working directory before every run; mirror that
+     * behavior here by creating the guest directory host-side when possible and
+     * falling back to the workspace root when it cannot be created.
+     */
+    private fun ensureGuestWorkingDirectory(workingDirectory: String): String {
+        val normalized = normalizePath(workingDirectory.trim()).ifBlank { workspaceRoot }
+        if (normalized == workspaceRoot) return normalized
+        val hostFile = mapGuestWorkingDirectoryToHostFile(
+            guestPath = normalized,
+            workspaceRoot = workspaceRoot,
+            homeDirectory = homeDirectory,
+            workspaceHostDir = workspaceDir,
+            rootfsDir = rootfsDir,
+        ) ?: return normalized
+        if (hostFile.isDirectory) return normalized
+        val created = runCatching { hostFile.mkdirs() }.getOrDefault(false)
+        return if (created || hostFile.isDirectory) normalized else workspaceRoot
     }
 
     private fun buildAlpineProcess(
@@ -1150,7 +1173,7 @@ class AlpineRuntime(
         val command = when (profileId) {
             "python" -> "python3 --version && pip3 --version && virtualenv --version"
             "node" -> "node --version && npm --version"
-            "git_search" -> "git --version && rg --version && fd --version && gh --version"
+            "git_search" -> "git --version && rg --version && fd --version && gh --version && command -v curl && jq --version"
             "ssh" -> "ssh -V"
             "chrome" ->
                 "(chromium-browser --version || chromium --version) && " +
@@ -1293,10 +1316,37 @@ class AlpineRuntime(
     }
 
     companion object {
+
+        /**
+         * Maps a guest working directory to its host-side location for the two
+         * roots the runtime owns (the bind-mounted workspace and the rootfs
+         * home). Returns null for any other guest path, which callers must
+         * treat as "cannot be pre-created".
+         */
+        internal fun mapGuestWorkingDirectoryToHostFile(
+            guestPath: String,
+            workspaceRoot: String,
+            homeDirectory: String,
+            workspaceHostDir: File,
+            rootfsDir: File,
+        ): File? {
+            val normalized = java.nio.file.Paths.get(guestPath.trim()
+                .ifBlank { workspaceRoot }).normalize().toString()
+            return when {
+                normalized == workspaceRoot || normalized.startsWith("$workspaceRoot/") -> {
+                    val relative = normalized.removePrefix(workspaceRoot).trimStart('/')
+                    File(workspaceHostDir, relative)
+                }
+                normalized == homeDirectory || normalized.startsWith("$homeDirectory/") ->
+                    File(rootfsDir, normalized.removePrefix("/"))
+                else -> null
+            }
+        }
+
         val AlpinePackageProfiles: Map<String, List<String>> = mapOf(
             "python" to listOf("python3", "py3-pip", "py3-virtualenv"),
             "node" to listOf("nodejs", "npm"),
-            "git_search" to listOf("git", "ripgrep", "fd", "github-cli"),
+            "git_search" to listOf("git", "ripgrep", "fd", "github-cli", "curl", "jq"),
             "ssh" to listOf("openssh-client"),
             "chrome" to listOf(
                 "chromium",
