@@ -1859,11 +1859,11 @@ private fun MessageBubble(message: ChatMessage) {
                 modifier = Modifier
                     .clip(RoundedCornerShape(22.dp))
                     .background(
-                        Brush.horizontalGradient(listOf(Color(0xFF5B36D7), Color(0xFF6E48FF)))
+                        Brush.horizontalGradient(listOf(Color(0xFFFF9E43), Color(0xFFFFB866)))
                     )
                     .padding(horizontal = 18.dp, vertical = 14.dp),
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White,
+                color = Color(0xFF3D2400),
             )
         }
     } else {

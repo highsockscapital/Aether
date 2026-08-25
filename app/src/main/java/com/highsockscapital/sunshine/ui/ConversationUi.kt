@@ -221,7 +221,6 @@ private const val ComposerPopupActionDelayMillis = 240L
 private const val MinimumWallClockMillis = 946_684_800_000L
 private val ChatGptControlShadow = Color(0x14000000)
 private val ChatGptComposerShadow = Color(0x18000000)
-private val ChatGptPurple = Color(0xFF9B5CFF)
 private val ChatGptMotionEasing = CubicBezierEasing(0.22f, 0.84f, 0.18f, 1f)
 
 internal enum class PendingGenerationIndicator {
@@ -2840,7 +2839,7 @@ private fun ConversationComposerBar(
                                             title = stringResource(R.string.agent_mode_label),
                                             icon = LucideIcons.MousePointer2,
                                             selected = agentModeSelected,
-                                            iconTint = Color(0xFF6D5CFF),
+                                            iconTint = SunshinePrimary,
                                             iconContainerColor = SunshineSurfaceHigh,
                                             onClick = {
                                                 runAfterAttachmentMenuDismiss {
@@ -2936,7 +2935,7 @@ private fun ComposerPauseButton(
         modifier = Modifier
             .size(38.dp)
             .clip(CircleShape)
-            .background(ChatGptPurple)
+            .background(SunshinePrimary)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -2959,7 +2958,7 @@ private fun ComposerSubmitButton(
 ) {
     val enabled = hasDraft && canSendDraft
     val buttonColor = if (enabled) {
-        ChatGptPurple
+        SunshinePrimary
     } else {
         SunshineSurfaceHigher
     }
@@ -3397,7 +3396,7 @@ private fun AgentModePreviewHeader(
         Icon(
             imageVector = if (isChrome) Icons.Rounded.Public else LucideIcons.MousePointer2,
             contentDescription = null,
-            tint = Color(0xFF6D5CFF),
+            tint = SunshinePrimary,
             modifier = Modifier.size(16.dp),
         )
         Text(
