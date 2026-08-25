@@ -45,6 +45,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Compress
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
 import androidx.compose.material.icons.rounded.Add
@@ -90,6 +91,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -436,6 +438,8 @@ fun SettingsScreen(
     defaultTitleModelKey: String,
     defaultNamingModelKey: String,
     defaultCompactingModelKey: String,
+    autoCompactEnabled: Boolean,
+    autoCompactThresholdPercent: Int,
     agentModeDisplayState: AgentModeDisplayState,
     providerConfigs: List<LlmProviderConfig>,
     usageStatisticsSnapshots: List<ChatUsageStatisticsSnapshot>,
@@ -483,6 +487,8 @@ fun SettingsScreen(
         String,
         String,
         String,
+        Boolean,
+        Int,
     ) -> Unit,
     onUpdateLanguage: (AppLanguage) -> Unit,
     onUpdateThemeMode: (AppThemeMode) -> Unit,
@@ -613,6 +619,10 @@ fun SettingsScreen(
     var defaultTitleModelKeyValue by rememberSaveable { mutableStateOf(defaultTitleModelKey) }
     var defaultNamingModelKeyValue by rememberSaveable { mutableStateOf(defaultNamingModelKey) }
     var defaultCompactingModelKeyValue by rememberSaveable { mutableStateOf(defaultCompactingModelKey) }
+    var autoCompactEnabledValue by rememberSaveable { mutableStateOf(autoCompactEnabled) }
+    var autoCompactThresholdPercentValue by rememberSaveable {
+        mutableStateOf(autoCompactThresholdPercent.coerceIn(50, 95))
+    }
 
     val enabledModelOptions = remember(providerConfigs) { providerConfigs.availableModelOptions() }
 
@@ -657,6 +667,8 @@ fun SettingsScreen(
             defaultTitleModelKeyValue,
             defaultNamingModelKeyValue,
             defaultCompactingModelKeyValue,
+            autoCompactEnabledValue,
+            autoCompactThresholdPercentValue,
         )
     }
 
@@ -863,6 +875,16 @@ fun SettingsScreen(
                 defaultTitleModelKey = defaultTitleModelKeyValue,
                 defaultNamingModelKey = defaultNamingModelKeyValue,
                 defaultCompactingModelKey = defaultCompactingModelKeyValue,
+                autoCompactEnabled = autoCompactEnabledValue,
+                autoCompactThresholdPercent = autoCompactThresholdPercentValue,
+                onAutoCompactEnabledChange = {
+                    autoCompactEnabledValue = it
+                    persistSettings()
+                },
+                onAutoCompactThresholdChange = {
+                    autoCompactThresholdPercentValue = it
+                    persistSettings()
+                },
                 onOpenDefaultChatModel = { currentPage = SettingsPage.DefaultChatModel.name },
                 onOpenDefaultTitleModel = { currentPage = SettingsPage.DefaultTitleModel.name },
                 onOpenDefaultNamingModel = { currentPage = SettingsPage.DefaultNamingModel.name },
@@ -2495,6 +2517,10 @@ private fun DefaultModelsPage(
     defaultTitleModelKey: String,
     defaultNamingModelKey: String,
     defaultCompactingModelKey: String,
+    autoCompactEnabled: Boolean,
+    autoCompactThresholdPercent: Int,
+    onAutoCompactEnabledChange: (Boolean) -> Unit,
+    onAutoCompactThresholdChange: (Int) -> Unit,
     onOpenDefaultChatModel: () -> Unit,
     onOpenDefaultTitleModel: () -> Unit,
     onOpenDefaultNamingModel: () -> Unit,
@@ -2568,6 +2594,72 @@ private fun DefaultModelsPage(
                 },
                 onClick = onOpenDefaultCompactingModel,
             )
+        }
+        SettingsCardGroup {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Rounded.Compress,
+                    contentDescription = null,
+                    tint = SunshineOnSurfaceVariant,
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.settings_auto_compaction_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = SunshineOnSurface,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_auto_compaction_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SunshineOnSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = autoCompactEnabled,
+                    onCheckedChange = onAutoCompactEnabledChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = SunshineOnPrimary,
+                        checkedTrackColor = SunshinePrimary,
+                    ),
+                )
+            }
+            if (autoCompactEnabled) {
+                CardDivider()
+                var thresholdValue by remember(autoCompactThresholdPercent) {
+                    mutableFloatStateOf(autoCompactThresholdPercent.toFloat())
+                }
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(R.string.settings_auto_compaction_threshold),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = SunshineOnSurface,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.settings_auto_compaction_threshold_value,
+                                thresholdValue.roundToInt(),
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SunshineOnSurfaceVariant,
+                        )
+                    }
+                    Slider(
+                        value = thresholdValue,
+                        onValueChange = { thresholdValue = it },
+                        onValueChangeFinished = { onAutoCompactThresholdChange(thresholdValue.roundToInt()) },
+                        valueRange = 50f..95f,
+                        steps = 8,
+                    )
+                }
+            }
         }
     }
 }

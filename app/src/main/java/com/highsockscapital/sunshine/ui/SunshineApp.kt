@@ -1078,6 +1078,8 @@ private fun SunshineAppContent(
                     defaultTitleModelKey = uiState.settings.defaultTitleModelKey,
                     defaultNamingModelKey = uiState.settings.defaultNamingModelKey,
                     defaultCompactingModelKey = uiState.settings.defaultCompactingModelKey,
+                    autoCompactEnabled = uiState.settings.autoCompactEnabled,
+                    autoCompactThresholdPercent = uiState.settings.autoCompactThresholdPercent,
                     agentModeDisplayState = uiState.agentModeDisplayState,
                     providerConfigs = uiState.providerConfigs,
                     usageStatisticsSnapshots = uiState.usageStatisticsSnapshots,

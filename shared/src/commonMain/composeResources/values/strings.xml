@@ -420,6 +420,10 @@
     <string name="settings_default_naming_model_subtitle">Used for automatic naming flows such as Agent Skills and MCP labels.</string>
     <string name="settings_default_compacting_model">Default Compacting Model</string>
     <string name="settings_default_compacting_model_subtitle">Used when /compact summarizes the current conversation.</string>
+    <string name="settings_auto_compaction_title">Automatic context compaction</string>
+    <string name="settings_auto_compaction_subtitle">Summarize older context automatically when usage crosses the threshold.</string>
+    <string name="settings_auto_compaction_threshold">Compaction threshold</string>
+    <string name="settings_auto_compaction_threshold_value">%1$d%% of the context window</string>
     <string name="settings_prioritize_sota_models">Prioritize the SOTA models</string>
     <string name="settings_prioritize_efficient_summary_models">Prioritize efficient summary models</string>
     <string name="settings_automatic_model">Automatic</string>

@@ -2466,6 +2466,8 @@ class SunshineViewModel(
         defaultTitleModelKey: String,
         defaultNamingModelKey: String,
         defaultCompactingModelKey: String,
+        autoCompactEnabled: Boolean,
+        autoCompactThresholdPercent: Int,
     ) {
         viewModelScope.launch {
             val currentState = _uiState.value
@@ -2517,6 +2519,8 @@ class SunshineViewModel(
                     defaultTitleModelKey = normalizeSelectableModelKey(defaultTitleModelKey, modelOptions),
                     defaultNamingModelKey = normalizeSelectableModelKey(defaultNamingModelKey, modelOptions),
                     defaultCompactingModelKey = normalizeSelectableModelKey(defaultCompactingModelKey, modelOptions),
+                    autoCompactEnabled = autoCompactEnabled,
+                    autoCompactThresholdPercent = autoCompactThresholdPercent.coerceIn(50, 95),
                 )
             )
         }

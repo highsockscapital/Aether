@@ -418,6 +418,10 @@
     <string name="settings_default_naming_model_subtitle">用于 Agent Skills、MCP 等自动命名流程。</string>
     <string name="settings_default_compacting_model">默认压缩模型</string>
     <string name="settings_default_compacting_model_subtitle">用于 /compact 总结当前会话。</string>
+    <string name="settings_auto_compaction_title">自动上下文压缩</string>
+    <string name="settings_auto_compaction_subtitle">当上下文用量超过阈值时自动总结较早的对话内容。</string>
+    <string name="settings_auto_compaction_threshold">压缩阈值</string>
+    <string name="settings_auto_compaction_threshold_value">上下文窗口的 %1$d%%</string>
     <string name="settings_prioritize_sota_models">优先选择前沿模型</string>
     <string name="settings_prioritize_efficient_summary_models">优先选择高效总结模型</string>
     <string name="settings_automatic_model">自动选择</string>
