@@ -46,9 +46,13 @@ class LlmProviderConfigValidationTest {
 
     @Test
     fun builtInApiKeyProviderRequiresSupportedNonBlankKey() {
-        assertFalse(provider(piProviderId = "openai", apiKey = "").isSharedProviderSetupValid())
-        assertTrue(provider(piProviderId = "openai", apiKey = "secret").isSharedProviderSetupValid())
-        assertFalse(
+        // OpenRouter is the remaining built-in API-key provider.
+        assertFalse(provider(piProviderId = "openrouter", apiKey = "").isSharedProviderSetupValid())
+        assertTrue(provider(piProviderId = "openrouter", apiKey = "secret").isSharedProviderSetupValid())
+
+        // Unknown provider ids resolve to the custom endpoint fallback, which
+        // accepts any configured key plus its default base URL.
+        assertTrue(
             provider(
                 piProviderId = "openai-codex",
                 authMethod = ProviderAuthMethod.ApiKey,
@@ -59,22 +63,17 @@ class LlmProviderConfigValidationTest {
 
     @Test
     fun oauthProviderRequiresSupportAndCredential() {
+        // No catalog provider currently declares supportsOAuth, so OAuth
+        // setups stay invalid even with a credential until one adds support.
         assertFalse(
             provider(
-                piProviderId = "openai-codex",
+                piProviderId = "openrouter",
                 authMethod = ProviderAuthMethod.OAuth,
-            ).isSharedProviderSetupValid(),
-        )
-        assertTrue(
-            provider(
-                piProviderId = "openai-codex",
-                authMethod = ProviderAuthMethod.OAuth,
-                oauthCredentialJson = "{\"access\":\"token\"}",
             ).isSharedProviderSetupValid(),
         )
         assertFalse(
             provider(
-                piProviderId = "openai",
+                piProviderId = "openrouter",
                 authMethod = ProviderAuthMethod.OAuth,
                 oauthCredentialJson = "{\"access\":\"token\"}",
             ).isSharedProviderSetupValid(),
@@ -83,7 +82,8 @@ class LlmProviderConfigValidationTest {
 
     @Test
     fun ambientProviderRequiresCatalogSupport() {
-        assertTrue(
+        // No catalog provider currently declares supportsAmbientAuth.
+        assertFalse(
             provider(
                 piProviderId = "google-vertex",
                 authMethod = ProviderAuthMethod.Ambient,
