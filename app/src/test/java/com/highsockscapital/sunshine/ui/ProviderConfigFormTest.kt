@@ -1,6 +1,5 @@
 package com.highsockscapital.sunshine.ui
 
-import com.highsockscapital.data.PiProviderDefinition
 import com.highsockscapital.sunshine.data.PiProviderDefinition
 import com.highsockscapital.sunshine.data.SunshineLlmUserAgent
 import com.highsockscapital.sunshine.data.LlmProviderConfig
