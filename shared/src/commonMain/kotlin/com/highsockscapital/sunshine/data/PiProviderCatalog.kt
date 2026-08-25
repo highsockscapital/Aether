@@ -74,16 +74,7 @@ object PiProviderCatalog {
         find(id) ?: providers.first { it.id == DefaultPiProviderId }
 }
 
-fun PiProviderDefinition.modelsDevProviderIds(): List<String> = when (id) {
-    "openai-codex" -> listOf("openai")
-    "azure-openai-responses" -> listOf("azure")
-    "vercel-ai-gateway" -> listOf("vercel")
-    "together" -> listOf("togetherai")
-    "fireworks" -> listOf("fireworks-ai")
-    "kimi-coding" -> listOf("kimi-for-coding")
-    "zai-coding-cn" -> listOf("zhipuai-coding-plan")
-    else -> listOf(id)
-}
+fun PiProviderDefinition.modelsDevProviderIds(): List<String> = listOf(id)
 
 fun inferLegacyPiProviderId(
     legacyProviderStorageValue: String?,
@@ -92,7 +83,6 @@ fun inferLegacyPiProviderId(
     "openai_responses" -> "openai"
     "anthropic_messages" -> "anthropic"
     "vertex_express" -> "google-vertex"
-    "openai_compatible" -> builtInProviderIdForHost(hostOf(baseUrl)) ?: DefaultPiProviderId
     else -> builtInProviderIdForHost(hostOf(baseUrl)) ?: DefaultPiProviderId
 }
 
@@ -152,25 +142,9 @@ private fun hostOf(baseUrl: String): String {
     return authority.substringBefore(':').lowercase()
 }
 
+// Only hosts whose provider still exists in the catalog need an entry;
+// everything else falls back to the custom endpoint definition.
 private fun builtInProviderIdForHost(host: String): String? = when (host) {
-    "api.openai.com" -> "openai"
-    "api.anthropic.com" -> "anthropic"
-    "generativelanguage.googleapis.com" -> "google"
-    "aiplatform.googleapis.com" -> "google-vertex"
-    "api.deepseek.com" -> "deepseek"
     "openrouter.ai" -> "openrouter"
-    "api.groq.com" -> "groq"
-    "api.x.ai" -> "xai"
-    "api.mistral.ai" -> "mistral"
-    "api.cerebras.ai" -> "cerebras"
-    "integrate.api.nvidia.com" -> "nvidia"
-    "router.huggingface.co" -> "huggingface"
-    "api.together.ai" -> "together"
-    "api.fireworks.ai" -> "fireworks"
-    "api.moonshot.ai" -> "moonshotai"
-    "api.moonshot.cn" -> "moonshotai-cn"
-    "api.minimax.io" -> "minimax"
-    "api.minimaxi.com" -> "minimax-cn"
-    "api.xiaomimimo.com" -> "xiaomi"
     else -> null
 }

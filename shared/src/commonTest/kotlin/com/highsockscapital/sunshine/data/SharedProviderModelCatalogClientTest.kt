@@ -56,28 +56,12 @@ class SharedProviderModelCatalogClientTest {
     }
 
     @Test
-    fun modelsDevProviderAliasesMatchSunshineBuiltIns() {
-        // Alias mapping applies by id, independent of catalog membership.
-        fun definition(id: String) = PiProviderDefinition(
-            id = id,
-            displayName = id,
-            defaultBaseUrl = "",
-            defaultModelId = "",
-        )
-        assertEquals(
-            listOf("togetherai"),
-            definition("together").modelsDevProviderIds(),
-        )
-        assertEquals(
-            listOf("kimi-for-coding"),
-            definition("kimi-coding").modelsDevProviderIds(),
-        )
+    fun modelsDevProviderIdsUseProviderIdentity() {
         assertEquals(
             listOf("openrouter"),
             PiProviderCatalog.resolve("openrouter").modelsDevProviderIds(),
         )
     }
-
     @Test
     fun modelEndpointFollowsConfiguredBaseUrl() {
         assertEquals("https://example.com/v1/models", modelsEndpoint("https://example.com/v1/responses"))

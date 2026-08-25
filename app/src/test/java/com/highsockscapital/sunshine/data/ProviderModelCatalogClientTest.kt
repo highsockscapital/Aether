@@ -7,12 +7,6 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-private fun definition(id: String) = PiProviderDefinition(
-    id = id,
-    displayName = id,
-    defaultBaseUrl = "",
-    defaultModelId = "",
-)
 
 class ProviderModelCatalogClientTest {
     @Test
@@ -123,24 +117,6 @@ class ProviderModelCatalogClientTest {
         assertEquals(listOf("gemini-new", "fallback-key"), result.models)
     }
 
-    @Test
-    fun modelsDevProviderAliasesMatchSunshineBuiltIns() {
-        // Alias mapping applies by id, independent of catalog membership.
-        fun definition(id: String) = PiProviderDefinition(
-            id = id,
-            displayName = id,
-            defaultBaseUrl = "",
-            defaultModelId = "",
-        )
-        assertEquals(
-            listOf("fireworks-ai"),
-            definition("fireworks").modelsDevProviderIds(),
-        )
-        assertEquals(
-            listOf("kimi-for-coding"),
-            definition("kimi-coding").modelsDevProviderIds(),
-        )
-    }
 
     @Test
     fun customOpenAiBaseUrlFetchesModelsFromConfiguredEndpoint() = runBlocking {
