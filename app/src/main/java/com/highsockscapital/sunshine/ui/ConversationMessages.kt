@@ -135,6 +135,7 @@ import com.highsockscapital.sunshine.ui.theme.SunshineError
 import com.highsockscapital.sunshine.ui.theme.SunshineOnPrimaryContainer
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
+import com.highsockscapital.sunshine.ui.theme.SunshineOutline
 import com.highsockscapital.sunshine.ui.theme.SunshineOutlineSoft
 import com.highsockscapital.sunshine.ui.theme.SunshinePrimary
 import com.highsockscapital.sunshine.ui.theme.SunshineScrim
