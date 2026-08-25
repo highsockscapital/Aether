@@ -26,10 +26,9 @@ class ProviderConfigFormTest {
     }
 
     @Test
-    fun cloudProvidersUseAmbientAuthenticationByDefault() {
-        // No cloud provider remains in the catalog; ambient defaults still
-        // apply to any definition that declares ambient-only authentication.
-        val definition = PiProviderDefinition(
+    fun applyProviderDefaultsHonorsDefinitionAuthCapabilities() {
+        // Definitions that only offer ambient authentication default to it.
+        val cloudDefinition = PiProviderDefinition(
             id = "test-cloud",
             displayName = "Test Cloud",
             defaultBaseUrl = "",
@@ -38,30 +37,29 @@ class ProviderConfigFormTest {
             supportsInteractiveApiKey = false,
             supportsAmbientAuth = true,
         )
-        val state = ProviderFormState.fromConfig(null)
+        val cloudState = ProviderFormState.fromConfig(null)
+        cloudState.applyProviderDefaults(cloudDefinition)
+        assertEquals(ProviderAuthMethod.Ambient, cloudState.authMethod)
 
-        state.applyProviderDefaults(definition)
-        assertEquals(ProviderAuthMethod.Ambient, state.authMethod)
-        assertTrue(state.isAuthenticationConfigured())
-    }
-
-    @Test
-    fun cloudflareGatewayUsesPiCredentialFieldsWithoutRequiringBaseUrl() {
-        val definition = PiProviderDefinition(
+        // Key-based definitions with an optional base URL keep it blank and
+        // still accept an API key. Configured-ness of unknown ids against the
+        // catalog is covered by OnboardingLogicTest.
+        val gatewayDefinition = PiProviderDefinition(
             id = "cloudflare-ai-gateway",
             displayName = "Cloudflare AI Gateway",
             defaultBaseUrl = "",
             defaultModelId = "",
             requiresBaseUrl = false,
         )
-        val state = ProviderFormState.fromConfig(null)
+        val gatewayState = ProviderFormState.fromConfig(null)
+        gatewayState.applyProviderDefaults(gatewayDefinition)
+        gatewayState.apiKey = "test-key"
 
-        state.applyProviderDefaults(definition)
-        state.apiKey = "test-key"
-
-        assertFalse(state.selectedDefinition.requiresBaseUrl)
-        assertEquals("", state.baseUrl)
-        assertTrue(state.isAuthenticationConfigured())
+        assertFalse(gatewayState.selectedDefinition.requiresBaseUrl)
+        assertEquals("", gatewayState.baseUrl)
+        val config = gatewayState.buildConfig()
+        assertEquals("test-key", config.apiKey)
+        assertEquals("", config.baseUrl)
     }
 
     @Test
