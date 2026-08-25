@@ -81,7 +81,8 @@ jobs:
         run: ./gradlew :app:assembleDebug --stacktrace
 
       - name: Debug signing report
-        run: ./gradlew :app:signingReport --stacktrace | grep -A6 "Variant: debug" || true
+        run: |
+          ./gradlew :app:signingReport --stacktrace | grep -A6 "Variant: debug" || true
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
