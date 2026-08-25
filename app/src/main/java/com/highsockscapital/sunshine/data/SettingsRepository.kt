@@ -163,23 +163,21 @@ class SettingsRepository(
 
     private fun parseSubagentConfigs(raw: String): Map<String, SubagentConfig> {
         if (raw.isBlank()) return emptyMap()
-        val configs = runCatching {
+        return runCatching {
             val json = JSONObject(raw)
-            buildMap {
-                json.keys().forEachRemaining { key ->
-                    val entry = json.optJSONObject(key) ?: return@forEachRemaining
-                    put(
-                        key,
-                        SubagentConfig(
-                            enabled = entry.optBoolean("enabled", true),
-                            modelId = entry.optString("modelId"),
-                            apiKeyOverride = entry.optString("apiKeyOverride"),
-                        ),
-                    )
-                }
+            val out = mutableMapOf<String, SubagentConfig>()
+            val keys = json.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val entry = json.optJSONObject(key) ?: continue
+                out[key] = SubagentConfig(
+                    enabled = entry.optBoolean("enabled", true),
+                    modelId = entry.optString("modelId"),
+                    apiKeyOverride = entry.optString("apiKeyOverride"),
+                )
             }
-        }
-        return configs.getOrDefault(emptyMap())
+            out.toMap()
+        }.getOrDefault(emptyMap())
     }
 
     private fun serializeSubagentConfigs(configs: Map<String, SubagentConfig>): String {
@@ -416,66 +414,66 @@ class SettingsRepository(
         prefs: androidx.datastore.preferences.core.MutablePreferences,
         settings: AppSettings,
     ) {
-            it[PI_PROVIDER_ID] = settings.piProviderId
-            it[PROVIDER_CONFIG_ID] = settings.providerConfigId
-            it[PROVIDER_AUTH_METHOD] = settings.providerAuthMethod.storageValue
-            it[API_KEY] = settings.apiKey
-            it[OAUTH_CREDENTIAL_JSON] = settings.oauthCredentialJson
-            it[PROVIDER_ENVIRONMENT_VARIABLES] = serializeProviderEnvironmentVariables(
+            prefs[PI_PROVIDER_ID] = settings.piProviderId
+            prefs[PROVIDER_CONFIG_ID] = settings.providerConfigId
+            prefs[PROVIDER_AUTH_METHOD] = settings.providerAuthMethod.storageValue
+            prefs[API_KEY] = settings.apiKey
+            prefs[OAUTH_CREDENTIAL_JSON] = settings.oauthCredentialJson
+            prefs[PROVIDER_ENVIRONMENT_VARIABLES] = serializeProviderEnvironmentVariables(
                 settings.providerEnvironmentVariables,
             )
-            it[BASE_URL] = settings.baseUrl
-            it[MODEL_ID] = settings.modelId
-            it[USER_AGENT] = normalizeLlmUserAgent(settings.userAgent)
-            it[REASONING_EFFORT] = normalizeReasoningEffort(settings.reasoningEffort)
-            it[SYSTEM_PROMPT] = settings.systemPrompt
-            it[TAVILY_API_KEY] = settings.tavilyApiKey
-            it[TAVILY_BASE_URL] = normalizeTavilyBaseUrl(settings.tavilyBaseUrl)
-            it[LLM_INACTIVITY_RECONNECT_TIMEOUT_SECONDS] =
+            prefs[BASE_URL] = settings.baseUrl
+            prefs[MODEL_ID] = settings.modelId
+            prefs[USER_AGENT] = normalizeLlmUserAgent(settings.userAgent)
+            prefs[REASONING_EFFORT] = normalizeReasoningEffort(settings.reasoningEffort)
+            prefs[SYSTEM_PROMPT] = settings.systemPrompt
+            prefs[TAVILY_API_KEY] = settings.tavilyApiKey
+            prefs[TAVILY_BASE_URL] = normalizeTavilyBaseUrl(settings.tavilyBaseUrl)
+            prefs[LLM_INACTIVITY_RECONNECT_TIMEOUT_SECONDS] =
                 normalizeLlmInactivityReconnectTimeoutSeconds(
                     settings.llmInactivityReconnectTimeoutSeconds
                 )
-            it[KEEP_TASKS_RUNNING_IN_BACKGROUND] = settings.keepTasksRunningInBackground
-            it[NOTIFY_ON_TASK_COMPLETION] = settings.notifyOnTaskCompletion
-            it[AGENT_WORKSPACE_MODE] = settings.agentWorkspaceMode.storageValue
-            it[WORKSPACE_MODE_INITIALIZED] = true
-            it[AUTO_CLEAN_OLD_COMMAND_HISTORY] = settings.autoCleanOldCommandHistory
-            it[OLD_COMMAND_HISTORY_RETENTION_HOURS] =
+            prefs[KEEP_TASKS_RUNNING_IN_BACKGROUND] = settings.keepTasksRunningInBackground
+            prefs[NOTIFY_ON_TASK_COMPLETION] = settings.notifyOnTaskCompletion
+            prefs[AGENT_WORKSPACE_MODE] = settings.agentWorkspaceMode.storageValue
+            prefs[WORKSPACE_MODE_INITIALIZED] = true
+            prefs[AUTO_CLEAN_OLD_COMMAND_HISTORY] = settings.autoCleanOldCommandHistory
+            prefs[OLD_COMMAND_HISTORY_RETENTION_HOURS] =
                 normalizeOldCommandHistoryRetentionHours(settings.oldCommandHistoryRetentionHours)
-            it[TERMUX_SETUP_COMPLETED] = settings.termuxSetupCompleted
-            it[TERMUX_SETUP_NOTICE_DISMISSED] = settings.termuxSetupNoticeDismissed
-            it[TERMUX_ENVIRONMENT_VARIABLES] =
+            prefs[TERMUX_SETUP_COMPLETED] = settings.termuxSetupCompleted
+            prefs[TERMUX_SETUP_NOTICE_DISMISSED] = settings.termuxSetupNoticeDismissed
+            prefs[TERMUX_ENVIRONMENT_VARIABLES] =
                 serializeTermuxEnvironmentVariables(settings.termuxEnvironmentVariables)
-            it[ENABLED_RUNTIME_IDS] = serializeRuntimeIds(settings.enabledRuntimeIds)
+            prefs[ENABLED_RUNTIME_IDS] = serializeRuntimeIds(settings.enabledRuntimeIds)
             settings.defaultRuntimeId?.let { runtimeId ->
-                it[DEFAULT_RUNTIME_ID] = runtimeId.storageValue
-            } ?: it.remove(DEFAULT_RUNTIME_ID)
-            it[ALPINE_SETUP_COMPLETED] = settings.alpineSetupCompleted
-            it[ALPINE_PACKAGE_PROFILES] = serializePackageProfileStates(settings.alpinePackageProfiles)
-            it[ALPINE_ENVIRONMENT_VARIABLES] =
+                prefs[DEFAULT_RUNTIME_ID] = runtimeId.storageValue
+            } ?: prefs.remove(DEFAULT_RUNTIME_ID)
+            prefs[ALPINE_SETUP_COMPLETED] = settings.alpineSetupCompleted
+            prefs[ALPINE_PACKAGE_PROFILES] = serializePackageProfileStates(settings.alpinePackageProfiles)
+            prefs[ALPINE_ENVIRONMENT_VARIABLES] =
                 serializeAlpineEnvironmentVariables(settings.alpineEnvironmentVariables)
-            it[AGENT_MODE_AUTHORIZATION_ENABLED] = settings.agentModeAuthorizationEnabled
-            it[AGENT_MODE_AUTHORIZATION_METHOD] = settings.agentModeAuthorizationMethod.storageValue
-            it[LANGUAGE] = settings.language.storageValue
-            it[THEME_MODE] = settings.themeMode.storageValue
-            it[DEFAULT_CHAT_MODEL_KEY] = settings.defaultChatModelKey
-            it[DEFAULT_TITLE_MODEL_KEY] = settings.defaultTitleModelKey
-            it[DEFAULT_NAMING_MODEL_KEY] = settings.defaultNamingModelKey
-            it[DEFAULT_COMPACTING_MODEL_KEY] = settings.defaultCompactingModelKey
-            it[AUTO_COMPACT_ENABLED] = settings.autoCompactEnabled
-            it[AUTO_COMPACT_THRESHOLD_PERCENT] = settings.autoCompactThresholdPercent
-            it[DEFAULT_SELECTED_SKILL_IDS] = serializeStringArray(settings.defaultSelectedSkillIds)
-            it.remove(BASIC_FUNCTION_CALLING_COMPATIBILITY_MODE)
-            it.remove(UNSUPPORTED_PARALLEL_TOOL_CALL_PROVIDER_KEYS)
-            it[SUBAGENTS_SHARED_OPENROUTER_API_KEY] = settings.subagentsSharedOpenRouterApiKey
-            it[SUBAGENT_CONFIGS_JSON] = serializeSubagentConfigs(settings.subagentConfigs)
-            it[PRIVACY_POLICY_ACCEPTED] =
-                (it[PRIVACY_POLICY_ACCEPTED] ?: false) || settings.privacyPolicyAccepted
-            it[LAST_UPDATE_CHECK_AT_MILLIS] = settings.lastUpdateCheckAtMillis
+            prefs[AGENT_MODE_AUTHORIZATION_ENABLED] = settings.agentModeAuthorizationEnabled
+            prefs[AGENT_MODE_AUTHORIZATION_METHOD] = settings.agentModeAuthorizationMethod.storageValue
+            prefs[LANGUAGE] = settings.language.storageValue
+            prefs[THEME_MODE] = settings.themeMode.storageValue
+            prefs[DEFAULT_CHAT_MODEL_KEY] = settings.defaultChatModelKey
+            prefs[DEFAULT_TITLE_MODEL_KEY] = settings.defaultTitleModelKey
+            prefs[DEFAULT_NAMING_MODEL_KEY] = settings.defaultNamingModelKey
+            prefs[DEFAULT_COMPACTING_MODEL_KEY] = settings.defaultCompactingModelKey
+            prefs[AUTO_COMPACT_ENABLED] = settings.autoCompactEnabled
+            prefs[AUTO_COMPACT_THRESHOLD_PERCENT] = settings.autoCompactThresholdPercent
+            prefs[DEFAULT_SELECTED_SKILL_IDS] = serializeStringArray(settings.defaultSelectedSkillIds)
+            prefs.remove(BASIC_FUNCTION_CALLING_COMPATIBILITY_MODE)
+            prefs.remove(UNSUPPORTED_PARALLEL_TOOL_CALL_PROVIDER_KEYS)
+            prefs[SUBAGENTS_SHARED_OPENROUTER_API_KEY] = settings.subagentsSharedOpenRouterApiKey
+            prefs[SUBAGENT_CONFIGS_JSON] = serializeSubagentConfigs(settings.subagentConfigs)
+            prefs[PRIVACY_POLICY_ACCEPTED] =
+                (prefs[PRIVACY_POLICY_ACCEPTED] ?: false) || settings.privacyPolicyAccepted
+            prefs[LAST_UPDATE_CHECK_AT_MILLIS] = settings.lastUpdateCheckAtMillis
         }
 
     suspend fun updateSettings(settings: AppSettings) {
-        context.dataStore.edit { writeAppSettings(it, settings) }
+        context.dataStore.edit { prefs -> writeAppSettings(prefs, settings) }
     }
 
     /**

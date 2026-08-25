@@ -672,30 +672,38 @@ class SunshineViewModel(
                 )
             }
             if (setupState.isReady) {
-                val settings = settingsRepository.updateSettings { current ->
-                    val withSetupCompleted = current.copy(
+                var settings = settingsRepository.updateSettings { current ->
+                    current.copy(
                         alpineSetupCompleted = true,
                         enabledRuntimeIds = current.enabledRuntimeIds + LocalRuntimeId.Alpine,
                     )
-                    withSetupCompleted.copy(
-                        alpinePackageProfiles = withSetupCompleted.alpinePackageProfiles
-                            .mapValues { (profileId, profileState) ->
-                                if (
-                                    profileState.installed &&
-                                    !runtime.alpineRuntime.isPackageProfileInstalled(profileId)
-                                ) {
-                                    profileState.copy(
-                                        installed = false,
-                                        installedAtMillis = 0L,
-                                        lastError = "",
-                                    )
-                                } else {
-                                    profileState
-                                }
-                            }
-                    )
                 }
                 run {
+                    val verifiedProfiles = withContext(Dispatchers.IO) {
+                        settings.alpinePackageProfiles.mapValues { (profileId, profileState) ->
+                            if (
+                                profileState.installed &&
+                                !runtime.alpineRuntime.isPackageProfileInstalled(profileId)
+                            ) {
+                                profileState.copy(
+                                    installed = false,
+                                    installedAtMillis = 0L,
+                                    lastError = "",
+                                )
+                            } else {
+                                profileState
+                            }
+                        }
+                    }
+                    if (verifiedProfiles != settings.alpinePackageProfiles) {
+                        settings = settingsRepository.updateSettings { current ->
+                            current.copy(
+                                alpinePackageProfiles =
+                                    current.alpinePackageProfiles +
+                                        verifiedProfiles.filterValues { !it.installed }
+                            )
+                        }
+                    }
                     if (settings.alpinePackageProfiles["chrome"]?.installed != true) {
                         _uiState.update { current ->
                             current.copy(
