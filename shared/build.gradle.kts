@@ -16,19 +16,6 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_17)
         }
     }
-    iosArm64()
-    iosSimulatorArm64()
-
-    targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().configureEach {
-        binaries.all {
-            freeCompilerArgs += "-Xoverride-konan-properties=minVersion.ios=17.0"
-        }
-        binaries.framework {
-            baseName = "SunshineShared"
-            isStatic = true
-        }
-    }
-
     sourceSets {
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -52,9 +39,6 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
         }
-        iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
-        }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.core)
@@ -66,8 +50,6 @@ kotlin {
 
 dependencies {
     add("kspAndroid", libs.androidx.room.compiler)
-    add("kspIosArm64", libs.androidx.room.compiler)
-    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
 }
 
 room {

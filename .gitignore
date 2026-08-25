@@ -22,11 +22,6 @@ dist/
 *.key
 keystore.properties
 signing.properties
-iosApp/Configuration/Local.xcconfig
-iosApp/Resources/Runtime/root.tar.gz
-iosApp/Resources/Runtime/bridge.mjs
-iosApp/Resources/Runtime/extension-bridge.mjs
-iosApp/Resources/Runtime/extensions/
 DerivedData/
 
 # Secrets and local service configuration

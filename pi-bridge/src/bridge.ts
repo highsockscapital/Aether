@@ -169,7 +169,7 @@ interface AgentSessionState {
   workspaceDirectory: string;
   termuxWorkspaceDirectory: string;
   runtime: "alpine" | "termux";
-  platform: "android" | "ios";
+  platform: "android";
   chromeEnabled: boolean;
   modelRuntime: ModelRuntime;
   model: Model<string>;
@@ -1504,12 +1504,11 @@ const SUNSHINE_HOST_TOOL_NAMES = new Set([
 function runtimeForPayload(payload: JsonObject): "alpine" | "termux" {
   const explicit = asString(payload.runtime, asString(payload.runtime_id)).trim().toLowerCase();
   if (explicit === "termux") return "termux";
-  if (explicit === "alpine") return "alpine";
-  return asString(payload.platform).trim().toLowerCase() === "ios" ? "alpine" : "alpine";
+  return "alpine";
 }
 
-function platformForPayload(payload: JsonObject): "android" | "ios" {
-  return asString(payload.platform).trim().toLowerCase() === "ios" ? "ios" : "android";
+function platformForPayload(_payload: JsonObject): "android" {
+  return "android";
 }
 
 function activeNativeToolNames(runtime: "alpine" | "termux"): string[] {
@@ -1518,20 +1517,9 @@ function activeNativeToolNames(runtime: "alpine" | "termux"): string[] {
     : ["read", "bash", "edit", "write", "grep", "find", "ls"];
 }
 
-function allowedHostToolDefinitions(rawTools: unknown, platform: "android" | "ios"): HostToolDefinition[] {
+function allowedHostToolDefinitions(rawTools: unknown): HostToolDefinition[] {
   return normalizeHostToolDefinitions(rawTools).filter((definition) => {
-    if (!SUNSHINE_HOST_TOOL_NAMES.has(definition.name)) return false;
-    if (platform === "ios") {
-      return new Set([
-        "browser",
-        "sunshine_config_get",
-        "sunshine_config_set",
-        "sunshine_skill_manage",
-        "sunshine_extension_manage",
-        "sunshine_developer_manage",
-      ]).has(definition.name);
-    }
-    return true;
+    return SUNSHINE_HOST_TOOL_NAMES.has(definition.name);
   });
 }
 
@@ -2095,7 +2083,7 @@ function setActiveSessionTools(state: AgentSessionState): void {
   const nativeNames = new Set(["read", "bash", "edit", "write", "grep", "find", "ls"]);
   const nonNative = state.session.getActiveToolNames()
     .filter((name) => !nativeNames.has(name))
-    .filter((name) => name !== "browser" || state.chromeEnabled || state.platform === "ios");
+    .filter((name) => name !== "browser" || state.chromeEnabled);
   state.session.setActiveToolsByName([...activeNativeToolNames(state.runtime), ...nonNative]);
 }
 
@@ -2252,7 +2240,7 @@ async function createNativeAgentSession(
     agentDir,
     settingsManager,
     additionalExtensionPaths,
-    extensionFactories: platform === "android" ? [sunshineChromeExtensionFactory] : [],
+    extensionFactories: [sunshineChromeExtensionFactory],
     additionalSkillPaths: stringArray(payload.skill_paths),
     appendSystemPrompt: [asString(payload.system_prompt)].filter(Boolean),
   });
@@ -2273,14 +2261,14 @@ async function createNativeAgentSession(
   const state = {
     sessionId,
     configSignature: modelConfigSignature(config),
-    toolSignature: hostToolSignature(allowedHostToolDefinitions(payload.host_tools, platform)),
+    toolSignature: hostToolSignature(allowedHostToolDefinitions(payload.host_tools)),
     extensionSignature,
     skillSignature: JSON.stringify(stringArray(payload.skill_paths).sort()),
     workspaceDirectory,
     termuxWorkspaceDirectory,
     runtime,
     platform,
-    chromeEnabled: platform === "android" && asBoolean(payload.chrome_enabled, false),
+    chromeEnabled: asBoolean(payload.chrome_enabled, false),
     modelRuntime: built.modelRuntime,
     model: built.model,
     credentialStore: built.credentialStore,
@@ -2296,7 +2284,7 @@ async function createNativeAgentSession(
   } satisfies AgentSessionState;
   const customTools = [
     ...nativeToolDefinitions(state),
-    ...allowedHostToolDefinitions(payload.host_tools, platform).map((tool) =>
+    ...allowedHostToolDefinitions(payload.host_tools).map((tool) =>
       createAgentHostToolDefinition(state, tool),
     ),
   ];
@@ -2545,7 +2533,7 @@ async function prepareNativeAgentSession(
   const sessionId = asString(payload.session_id).trim();
   if (!sessionId) throw new Error("session_id is required for Pi AgentSession.");
   const platform = platformForPayload(payload);
-  const signature = hostToolSignature(allowedHostToolDefinitions(payload.host_tools, platform));
+  const signature = hostToolSignature(allowedHostToolDefinitions(payload.host_tools));
   const configuredExtensionPaths = stringArray(payload.extension_paths);
   const workspaceDirectory = asString(payload.workspace_directory, process.cwd()) || process.cwd();
   const { signature: extensionSignature } = await resolveNativeExtensionSet(
@@ -2570,7 +2558,7 @@ async function prepareNativeAgentSession(
     return { state: await createNativeAgentSession(sessionId, payload, config, history), reused: false };
   }
   existing.lastAccessedAt = Date.now();
-  existing.chromeEnabled = platform === "android" && asBoolean(payload.chrome_enabled, false);
+  existing.chromeEnabled = asBoolean(payload.chrome_enabled, false);
   setActiveSessionTools(existing);
   return { state: existing, reused: true };
 }

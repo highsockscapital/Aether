@@ -25,7 +25,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
-/** Sunshine-owned host tools shared by Android and iOS. */
+/** Sunshine-owned host tools used by the Android app. */
 class SharedAgentManagementTools(
     private val runtime: MultiplatformLocalRuntime,
     private val bridge: SharedPiBridgeClient,

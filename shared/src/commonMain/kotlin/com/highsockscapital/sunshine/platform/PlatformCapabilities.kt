@@ -26,19 +26,6 @@ data class PlatformCapabilities(
             localNotifications = true,
             nativeMods = true,
         )
-
-        val Ios = PlatformCapabilities(
-            termux = false,
-            runtimeSelection = false,
-            agentMode = false,
-            scheduledTasks = false,
-            persistentBackground = true,
-            localNotifications = false,
-            nativeMods = false,
-            alpineChrome = true,
-            layeredScreenTransitions = true,
-            supportsTabletLayout = true,
-        )
     }
 }
 

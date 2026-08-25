@@ -1445,7 +1445,6 @@ test("uses Pi Coding Agent native tool schemas and platform runtime sets", async
   const cases = [
     ["android-alpine", "android", "alpine", ["read", "bash", "edit", "write", "grep", "find", "ls"]],
     ["android-termux", "android", "termux", ["read", "bash", "edit", "write"]],
-    ["ios-alpine", "ios", "alpine", ["read", "bash", "edit", "write", "grep", "find", "ls"]],
   ];
   for (const [sessionId, platform, runtime, expectedTools] of cases) {
     await client.request(`${sessionId}-turn`, "run_turn", {
@@ -1517,18 +1516,6 @@ test("allows only Sunshine-owned host tools and exposes the platform browser", a
   assert.deepEqual(sharedNames.filter((name) => android.active_tools.includes(name)), sharedNames);
   assert.deepEqual(removedNames.filter((name) => android.active_tools.includes(name)), []);
 
-  await client.request("ios-host-turn", "run_turn", {
-    ...turnPayload("ios-host", [userMessage("hello")], fauxConfig(), requested),
-    platform: "ios",
-    chrome_enabled: true,
-  });
-  const ios = await client.request("ios-host-state", "get_session_state", {
-    session_id: "ios-host",
-  });
-  assert.equal(ios.active_tools.includes("browser"), true);
-  assert.equal(ios.active_tools.includes("chrome"), false);
-  assert.deepEqual(sharedNames.filter((name) => ios.active_tools.includes(name)), sharedNames);
-  assert.deepEqual(removedNames.filter((name) => ios.active_tools.includes(name)), []);
 });
 
 test("accepts steer and follow-up messages on a live persistent harness", async () => {
