@@ -80,6 +80,7 @@
     <string name="statistics_dash">-</string>
     <string name="statistics_unavailable">Unavailable</string>
     <string name="common_save">Save</string>
+    <string name="common_saved">Saved</string>
     <string name="common_search">Search</string>
     <string name="common_clear">Clear</string>
     <string name="common_on">On</string>

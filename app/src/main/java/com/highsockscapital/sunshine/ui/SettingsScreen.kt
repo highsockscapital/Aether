@@ -949,7 +949,11 @@ fun SettingsScreen(
                         (name to (subagentDrafts[name]?.copy(apiKeyOverride = apiKey) ?: SubagentConfig(apiKeyOverride = apiKey)))
                 },
                 onFetchModels = onFetchSubagentModels,
-                onBack = { currentPage = SettingsPage.Hub.name },
+                onSave = { persistSettings() },
+                onBack = {
+                    persistSettings()
+                    currentPage = SettingsPage.Hub.name
+                },
             )
 
             SettingsPage.DefaultChatModel -> ModelSelectionListPage(
@@ -7783,8 +7787,10 @@ private fun SubagentsPage(
     onAgentModelChanged: (String, String) -> Unit,
     onAgentApiKeyChanged: (String, String) -> Unit,
     onFetchModels: (String, (List<String>) -> Unit) -> Unit,
+    onSave: () -> Unit,
     onBack: () -> Unit,
 ) {
+    var justSaved by rememberSaveable { mutableStateOf(false) }
     SubPageScaffold(
         title = stringResource(R.string.settings_subagents),
         onBack = onBack,
@@ -7793,10 +7799,28 @@ private fun SubagentsPage(
             ChatGptTextField(
                 label = stringResource(R.string.settings_subagents_shared_key),
                 value = sharedApiKey,
-                onValueChange = onSharedApiKeyChanged,
+                onValueChange = {
+                    justSaved = false
+                    onSharedApiKeyChanged(it)
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 isSecret = true,
             )
+            Button(
+                onClick = {
+                    onSave()
+                    justSaved = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            ) {
+                Text(
+                    stringResource(
+                        if (justSaved) R.string.common_saved else R.string.common_save
+                    )
+                )
+            }
         }
         Text(
             text = stringResource(R.string.settings_subagents_shared_key_hint),

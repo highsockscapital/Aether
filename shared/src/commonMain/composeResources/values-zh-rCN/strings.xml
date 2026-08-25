@@ -80,6 +80,7 @@
     <string name="statistics_dash">-</string>
     <string name="statistics_unavailable">暂无数据</string>
     <string name="common_save">保存</string>
+    <string name="common_saved">已保存</string>
     <string name="common_search">搜索</string>
     <string name="common_on">开启</string>
     <string name="common_off">关闭</string>
