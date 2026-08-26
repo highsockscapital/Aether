@@ -1006,8 +1006,8 @@ class PiExtensionManager(
     private fun installPreinstalledExtensionsIntoMirror() {
         val target = ensureImportedExtensionsRoot(SunshineExtensionGuestDirectory)
         val assets = runCatching {
-            appContext.assets.list("preinstalledExtensions/extensions").orEmpty()
-        }.getOrDefault(emptyList())
+            appContext.assets.list("preinstalledExtensions/extensions")
+        }.getOrDefault(emptyArray())
         if (assets.isEmpty()) return
         for (name in assets) {
             if (preinstalledPreferences.getBoolean("removed_$name", false)) continue

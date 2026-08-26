@@ -72,7 +72,7 @@ class PiKernelBridge(
     private val diagnosticLogger: SunshineDiagnosticLogger = SunshineDiagnosticLogger.NoOp,
 ) {
     private val guestFiles = TermuxGuestFiles(context.applicationContext, bashTool)
-    private val writerLock = Any()
+    private val writerMutex = Mutex()
     private val mutex = Mutex()
     private val pendingRequests = ConcurrentHashMap<String, PendingPiBridgeRequest>()
     private val cancelledRequestIds = ConcurrentHashMap<String, Long>()
@@ -758,8 +758,6 @@ class PiKernelBridge(
             synchronized(processStateLock) {
                 activeProcess = startedProcess
             }
-            startStdoutReader(startedProcess)
-            startStderrReader(startedProcess)
             diagnosticLogger.event(
                 category = "pi_bridge",
                 event = "process_started",
@@ -886,7 +884,7 @@ class PiKernelBridge(
     }
 
     private suspend fun writeLine(process: TermuxBridgeProcess, line: String) {
-        synchronized(writerLock) {
+        writerMutex.withLock {
             val result = guestFiles.execute(
                 command = "printf '%s\\n' ${shellQuote(line)} > ${shellQuote(PiBridgeFifoPath)}",
                 workingDirectory = PiBridgeWorkingDirectory,

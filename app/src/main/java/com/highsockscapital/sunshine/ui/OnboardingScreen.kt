@@ -1018,7 +1018,6 @@ private fun piCoreSetupStatusText(
 }
 
 @Composable
-@Composable
 private fun TermuxStep(
     stepIndex: Int,
     stepCount: Int,

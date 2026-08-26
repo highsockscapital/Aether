@@ -1586,7 +1586,6 @@ private fun PendingAssistantTimeline(
             label = stringResource(R.string.chrome_label),
             contentDescription = stringResource(R.string.chrome_label),
             pendingText = stringResource(R.string.chat_chrome_preview_pending),
-            useLiveSurface = false,
             overlayText = chromeOverlayText,
             onAttachSurface = {},
             onDetachSurface = {},

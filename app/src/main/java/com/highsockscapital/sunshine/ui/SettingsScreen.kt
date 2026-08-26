@@ -6017,6 +6017,44 @@ private fun RuntimeCleanupDeveloperSettingsSection(
 }
 
 @Composable
+private fun RuntimeDefaultsPage(
+    title: String,
+    termuxReady: Boolean,
+    enabledRuntimeIds: Set<LocalRuntimeId>,
+    defaultRuntimeId: LocalRuntimeId?,
+    onSetDefaultRuntime: (LocalRuntimeId) -> Unit,
+    onBack: () -> Unit,
+) {
+    SubPageScaffold(title = title, onBack = onBack) {
+        Text(
+            text = stringResource(R.string.settings_runtime_defaults_description),
+            style = MaterialTheme.typography.bodySmall,
+            color = SunshineOnSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
+        Spacer(Modifier.height(16.dp))
+        SettingsCardGroup {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                SettingsChoiceRow(
+                    title = "Termux",
+                    subtitle = if (termuxReady) {
+                        stringResource(R.string.settings_runtime_termux_ready_subtitle)
+                    } else {
+                        stringResource(R.string.settings_runtime_termux_unavailable_subtitle)
+                    },
+                    selected = defaultRuntimeId == LocalRuntimeId.Termux,
+                    onClick = {
+                        if (termuxReady || LocalRuntimeId.Termux in enabledRuntimeIds) {
+                            onSetDefaultRuntime(LocalRuntimeId.Termux)
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun WorkspaceModeSettingsSection(
     selectedWorkspaceMode: AgentWorkspaceMode,
     onWorkspaceModeSelected: (AgentWorkspaceMode) -> Unit,
