@@ -246,7 +246,7 @@ private class RejectedStdinFakeProcess : RuntimeProcess {
     override val stderr: Flow<ByteArray> = Channel<ByteArray>().receiveAsFlow()
 
     override suspend fun writeStdin(bytes: ByteArray) {
-        throw RuntimeProcessStdinException(pid, "Alpine process $pid rejected stdin.")
+        throw RuntimeProcessStdinException(pid, "Termux process $pid rejected stdin.")
     }
 
     override suspend fun closeStdin() = Unit

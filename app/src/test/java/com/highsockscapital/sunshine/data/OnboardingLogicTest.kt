@@ -131,24 +131,6 @@ class OnboardingLogicTest {
     }
 
     @Test
-    fun enablingSecondRuntimeDoesNotOverrideExistingDefaultWhenRequested() {
-        val termuxDefault = AppSettings(
-            enabledRuntimeIds = setOf(LocalRuntimeId.Termux),
-            defaultRuntimeId = LocalRuntimeId.Termux,
-            termuxSetupCompleted = true,
-        )
-
-        val withAlpine = termuxDefault.enableRuntimeForTest(
-            runtimeId = LocalRuntimeId.Alpine,
-            makeDefault = false,
-        )
-
-        assertTrue(LocalRuntimeId.Termux in withAlpine.enabledRuntimeIds)
-        assertTrue(LocalRuntimeId.Alpine in withAlpine.enabledRuntimeIds)
-        assertTrue(withAlpine.defaultRuntimeId == LocalRuntimeId.Termux)
-    }
-
-    @Test
     fun onlySuccessfulReplyCompletesIncompleteOnboarding() {
         val settings = AppSettings(
             onboardingSeenVersion = CurrentOnboardingVersion,
@@ -177,7 +159,6 @@ private fun AppSettings.enableRuntimeForTest(
     val enabled = enabledRuntimeIds + runtimeId
     return copy(
         termuxSetupCompleted = termuxSetupCompleted || runtimeId == LocalRuntimeId.Termux,
-        alpineSetupCompleted = alpineSetupCompleted || runtimeId == LocalRuntimeId.Alpine,
         enabledRuntimeIds = enabled,
         defaultRuntimeId = if (makeDefault) runtimeId else defaultRuntimeId,
     )

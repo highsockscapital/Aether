@@ -168,7 +168,6 @@ import com.highsockscapital.sunshine.data.PiExtensionCatalogEntry
 import com.highsockscapital.sunshine.data.PiExtensionInstallKind
 import com.highsockscapital.sunshine.data.PiPackageCompatibilityIssue
 import com.highsockscapital.sunshine.data.PiPackageDetails
-import com.highsockscapital.sunshine.data.PackageProfileState
 import com.highsockscapital.sunshine.data.ProviderModelOption
 import com.highsockscapital.sunshine.data.RootSetupIssue
 import com.highsockscapital.sunshine.data.RootSetupState
@@ -191,14 +190,8 @@ import com.highsockscapital.sunshine.data.quickActionLabel
 import com.highsockscapital.sunshine.data.resolveAutomaticModelKey
 import com.highsockscapital.sunshine.data.sortedForAutomaticModelPurpose
 import com.highsockscapital.sunshine.mod.SunshineNativeModState
-import com.highsockscapital.sunshine.runtime.LocalRuntimeIssue
 import org.json.JSONArray
 import org.json.JSONObject
-import com.highsockscapital.sunshine.runtime.LocalRuntimeSetupState
-import com.highsockscapital.sunshine.runtime.AlpineSetupActivity
-import com.highsockscapital.sunshine.runtime.AlpineSetupProgress
-import com.highsockscapital.sunshine.runtime.AlpineTerminalLaunchSpec
-import com.highsockscapital.sunshine.runtime.AndroidAlpineFileManagerRuntime
 import com.highsockscapital.sunshine.termux.TermuxSetupState
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
 import com.highsockscapital.sunshine.ui.theme.SunshineOutline
@@ -244,10 +237,6 @@ private enum class SettingsPage {
     AddScheduledTask,
     EditScheduledTask,
     Termux,
-    Alpine,
-    AlpineTerminal,
-    AlpineFiles,
-    AlpineChrome,
     RuntimeDefaults,
     AgentMode,
     Statistics,
@@ -272,7 +261,6 @@ private fun SettingsPage.depth(): Int = when (this) {
     SettingsPage.McpServers,
     SettingsPage.ScheduledTasks,
     SettingsPage.Termux,
-    SettingsPage.Alpine,
     SettingsPage.RuntimeDefaults,
     SettingsPage.AgentMode,
     SettingsPage.Statistics,
@@ -285,12 +273,9 @@ private fun SettingsPage.depth(): Int = when (this) {
     SettingsPage.PackageDetail,
     SettingsPage.AddMcpServer,
     SettingsPage.EditMcpServer,
-    SettingsPage.AddScheduledTask,
-    SettingsPage.EditScheduledTask,
-    SettingsPage.AlpineTerminal,
-    SettingsPage.AlpineFiles,
-    SettingsPage.AlpineChrome,
-    SettingsPage.RootSetupProgress -> 2
+        SettingsPage.AddScheduledTask,
+        SettingsPage.EditScheduledTask,
+        SettingsPage.RootSetupProgress -> 2
     SettingsPage.ExtensionSettingsCategory -> 2
     SettingsPage.DefaultChatModel,
     SettingsPage.DefaultTitleModel,
@@ -460,12 +445,8 @@ fun SettingsScreen(
     usageStatisticsSnapshots: List<ChatUsageStatisticsSnapshot>,
     scheduledTasks: List<ScheduledTask>,
     termuxSetupState: TermuxSetupState,
-    alpineSetupState: LocalRuntimeSetupState,
     enabledRuntimeIds: Set<LocalRuntimeId>,
     defaultRuntimeId: LocalRuntimeId?,
-    alpinePackageProfiles: Map<String, PackageProfileState>,
-    alpinePackageInstallProgress: Map<String, AlpineSetupProgress>,
-    alpineFileManagerRuntime: AndroidAlpineFileManagerRuntime,
     developerTermuxReadyOverride: Boolean?,
     installedSkills: List<com.highsockscapital.sunshine.data.InstalledSkill>,
     installedPiExtensions: List<InstalledPiExtension>,
@@ -547,13 +528,6 @@ fun SettingsScreen(
     onOpenTermux: () -> Unit,
     onInstallTermux: () -> Unit,
     onRefreshTermuxSetup: () -> Unit,
-    onInitializeAlpineRuntime: () -> Unit,
-    onResetAlpineRuntime: () -> Unit,
-    onRefreshAlpineSetup: () -> Unit,
-    onInstallAlpinePackageProfile: (String) -> Unit,
-    onCreateAlpineTerminalLaunchSpec: suspend () -> Result<AlpineTerminalLaunchSpec>,
-    onStartAlpineChrome: suspend () -> Result<Unit>,
-    onShouldShowAlpineChromeKeyboard: suspend (Int, Int) -> Result<Boolean>,
     onSetDefaultRuntime: (LocalRuntimeId) -> Unit,
     onRefreshRootSetup: () -> Unit,
     onStartRootSetupFromSettings: (RootSetupProgressReturnPage) -> Unit,
@@ -564,7 +538,6 @@ fun SettingsScreen(
     onInstallShizuku: () -> Unit,
     onReplayOnboarding: () -> Unit,
     onReplayFollowUpOnboarding: () -> Unit,
-    onReplayAlpineSetupPreview: () -> Unit,
     onStopAgentModeDisplay: () -> Unit,
     onRefreshAgentModeDisplays: (AgentModeAuthorizationMethod) -> Unit,
     onOpenWebsite: () -> Unit,
@@ -772,9 +745,6 @@ fun SettingsScreen(
         SettingsPage.ExtensionSettingsCategory -> SettingsPage.ExtensionSettings
         SettingsPage.AddMcpServer, SettingsPage.EditMcpServer -> SettingsPage.McpServers
         SettingsPage.AddScheduledTask, SettingsPage.EditScheduledTask -> SettingsPage.ScheduledTasks
-        SettingsPage.AlpineTerminal,
-        SettingsPage.AlpineFiles,
-        SettingsPage.AlpineChrome -> SettingsPage.Alpine
         SettingsPage.RootSetupProgress -> rootSetupReturnPageValue()
         else -> SettingsPage.Hub
     }
@@ -842,9 +812,8 @@ fun SettingsScreen(
                     )
                 },
                 termuxReady = termuxSetupState.isReady,
-                alpineReady = alpineSetupState.isReady,
                 defaultRuntimeId = defaultRuntimeId,
-                showRuntimeDefaults = termuxSetupState.isReady && alpineSetupState.isReady,
+                showRuntimeDefaults = termuxSetupState.isReady,
                 skillCount = installedSkills.size,
                 piExtensionCount = installedPiExtensions.size,
                 piExtensionsLoaded = hasLoadedInstalledPiExtensions,
@@ -1323,45 +1292,9 @@ fun SettingsScreen(
                 onBack = { currentPage = SettingsPage.Hub.name },
             )
 
-            SettingsPage.Alpine -> AlpineSettingsPage(
-                title = "Alpine",
-                setupState = alpineSetupState,
-                packageProfiles = alpinePackageProfiles,
-                installProgress = alpinePackageInstallProgress,
-                isDefaultRuntime = defaultRuntimeId == LocalRuntimeId.Alpine,
-                onInitialize = onInitializeAlpineRuntime,
-                onReset = onResetAlpineRuntime,
-                onRefresh = onRefreshAlpineSetup,
-                onInstallPackageProfile = onInstallAlpinePackageProfile,
-                onSetDefault = { onSetDefaultRuntime(LocalRuntimeId.Alpine) },
-                onOpenTerminal = { currentPage = SettingsPage.AlpineTerminal.name },
-                onOpenFiles = { currentPage = SettingsPage.AlpineFiles.name },
-                onOpenChrome = { currentPage = SettingsPage.AlpineChrome.name },
-                onBack = { currentPage = SettingsPage.Hub.name },
-            )
-
-            SettingsPage.AlpineTerminal -> AlpineTerminalScreen(
-                createLaunchSpec = onCreateAlpineTerminalLaunchSpec,
-                onBack = { currentPage = SettingsPage.Alpine.name },
-            )
-
-            SettingsPage.AlpineFiles -> {
-                AndroidAlpineFileManagerScreen(
-                    runtime = alpineFileManagerRuntime,
-                    onBack = { currentPage = SettingsPage.Alpine.name },
-                )
-            }
-
-            SettingsPage.AlpineChrome -> AlpineChromeScreen(
-                onStart = onStartAlpineChrome,
-                onShouldShowKeyboard = onShouldShowAlpineChromeKeyboard,
-                onBack = { currentPage = SettingsPage.Alpine.name },
-            )
-
             SettingsPage.RuntimeDefaults -> RuntimeDefaultsPage(
                 title = stringResource(R.string.settings_runtime_defaults),
                 termuxReady = termuxSetupState.isReady,
-                alpineReady = alpineSetupState.isReady,
                 enabledRuntimeIds = enabledRuntimeIds,
                 defaultRuntimeId = defaultRuntimeId,
                 onSetDefaultRuntime = onSetDefaultRuntime,
@@ -1414,7 +1347,6 @@ fun SettingsScreen(
             SettingsPage.Developer -> DeveloperSettingsPage(
                 title = stringResource(R.string.settings_developer),
                 onReplayFollowUpOnboarding = ::persistAndReplayFollowUpOnboarding,
-                onReplayAlpineSetupPreview = onReplayAlpineSetupPreview,
                 onImportAppData = onImportAppData,
                 onExportAppData = onExportAppData,
                 onExportLogs = onExportLogs,
@@ -1455,7 +1387,6 @@ private fun SettingsHub(
     tavilyConfigured: Boolean,
     reliabilitySummary: String,
     termuxReady: Boolean,
-    alpineReady: Boolean,
     defaultRuntimeId: LocalRuntimeId?,
     showRuntimeDefaults: Boolean,
     skillCount: Int,
@@ -1596,13 +1527,6 @@ private fun SettingsHub(
                     title = stringResource(R.string.settings_scheduled_tasks),
                     subtitle = stringResource(R.string.settings_scheduled_tasks_count_configured, scheduledTaskCount),
                     onClick = { onNavigate(SettingsPage.ScheduledTasks) },
-                )
-                CardDivider()
-                SettingsNavRow(
-                    icon = Icons.Rounded.Code,
-                    title = "Alpine",
-                    subtitle = if (alpineReady) { stringResource(R.string.settings_alpine_subtitle_ready) } else { stringResource(R.string.settings_alpine_subtitle_setup) },
-                    onClick = { onNavigate(SettingsPage.Alpine) },
                 )
                 CardDivider()
                 SettingsNavRow(
@@ -5906,12 +5830,6 @@ private fun AddMcpServerPage(
                             selected = stdioRuntimeEnvironment == LocalRuntimeId.Termux,
                             onClick = { stdioRuntimeEnvironment = LocalRuntimeId.Termux },
                         )
-                        SettingsChoiceRow(
-                            title = "Alpine",
-                            subtitle = stringResource(R.string.settings_runtime_alpine_stdio_subtitle),
-                            selected = stdioRuntimeEnvironment == LocalRuntimeId.Alpine,
-                            onClick = { stdioRuntimeEnvironment = LocalRuntimeId.Alpine },
-                        )
                     }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -6096,297 +6014,6 @@ private fun RuntimeCleanupDeveloperSettingsSection(
             }
         }
     }
-}
-
-@Composable
-private fun AlpineSettingsPage(
-    title: String,
-    setupState: LocalRuntimeSetupState,
-    packageProfiles: Map<String, PackageProfileState>,
-    installProgress: Map<String, AlpineSetupProgress>,
-    isDefaultRuntime: Boolean,
-    onInitialize: () -> Unit,
-    onReset: () -> Unit,
-    onRefresh: () -> Unit,
-    onInstallPackageProfile: (String) -> Unit,
-    onSetDefault: () -> Unit,
-    onOpenTerminal: () -> Unit,
-    onOpenFiles: () -> Unit,
-    onOpenChrome: () -> Unit,
-    onBack: () -> Unit,
-) {
-    LaunchedEffect(Unit) {
-        onRefresh()
-    }
-    SubPageScaffold(
-        title = title,
-        onBack = onBack,
-        trailingIcon = Icons.Rounded.Terminal,
-        trailingEnabled = setupState.isReady,
-        trailingContentDescription = stringResource(R.string.settings_open_terminal),
-        onTrailingAction = onOpenTerminal,
-        secondaryTrailingIcon = Icons.Rounded.Folder,
-        secondaryTrailingEnabled = setupState.isReady,
-        secondaryTrailingContentDescription = "Open files",
-        onSecondaryTrailingAction = onOpenFiles,
-        tertiaryTrailingIcon = Icons.Rounded.Public,
-        tertiaryTrailingEnabled = packageProfiles["chrome"]?.installed == true,
-        tertiaryTrailingContentDescription = stringResource(R.string.settings_open_chrome),
-        onTertiaryTrailingAction = onOpenChrome,
-    ) {
-        Text(
-            text = stringResource(R.string.settings_alpine_description),
-            style = MaterialTheme.typography.bodySmall,
-            color = SunshineOnSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 4.dp),
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        SettingsCardGroup {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = stringResource(R.string.settings_runtime_status),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = SunshineOnSurface,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = alpineSetupStatusText(setupState),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SunshineOnSurfaceVariant,
-                )
-                if (setupState.detail.isNotBlank()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = setupState.detail,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SunshineOnSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.height(14.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SettingsActionButton(
-                        label = when (setupState.issue) {
-                            LocalRuntimeIssue.Ready -> stringResource(R.string.settings_ready)
-                            else -> stringResource(R.string.settings_initialize)
-                        },
-                        onClick = onInitialize,
-                        modifier = Modifier.weight(1f),
-                        enabled = !setupState.isReady,
-                    )
-                    SettingsSubtleActionButton(
-                        label = stringResource(R.string.common_refresh),
-                        onClick = onRefresh,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
-                SettingsSubtleActionButton(
-                    label = stringResource(R.string.settings_reset_alpine_data),
-                    onClick = onReset,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (setupState.isReady && !isDefaultRuntime) {
-                    Spacer(Modifier.height(10.dp))
-                    SettingsActionButton(
-                        label = stringResource(R.string.settings_use_as_default_runtime),
-                        onClick = onSetDefault,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        SettingsCardGroup {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = stringResource(R.string.settings_environment_presets),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = SunshineOnSurface,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.settings_environment_presets_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SunshineOnSurfaceVariant,
-                )
-                Spacer(Modifier.height(12.dp))
-                AlpineProfileRow(
-                    title = stringResource(R.string.settings_python_environment),
-                    subtitle = "python3, pip, virtualenv",
-                    profileState = packageProfiles["python"],
-                    installProgress = installProgress["python"],
-                    enabled = setupState.isReady,
-                    onInstall = { onInstallPackageProfile("python") },
-                )
-                CardDivider()
-                AlpineProfileRow(
-                    title = stringResource(R.string.settings_node_environment),
-                    subtitle = "nodejs, npm",
-                    profileState = packageProfiles["node"],
-                    installProgress = installProgress["node"],
-                    enabled = setupState.isReady,
-                    onInstall = { onInstallPackageProfile("node") },
-                )
-                CardDivider()
-                AlpineProfileRow(
-                    title = stringResource(R.string.settings_git_ripgrep_tools),
-                    subtitle = "git, ripgrep, fd, gh, curl, jq",
-                    profileState = packageProfiles["git_search"],
-                    installProgress = installProgress["git_search"],
-                    enabled = setupState.isReady,
-                    onInstall = { onInstallPackageProfile("git_search") },
-                )
-                CardDivider()
-                AlpineProfileRow(
-                    title = stringResource(R.string.settings_ssh_tools),
-                    subtitle = "openssh-client",
-                    profileState = packageProfiles["ssh"],
-                    installProgress = installProgress["ssh"],
-                    enabled = setupState.isReady,
-                    onInstall = { onInstallPackageProfile("ssh") },
-                )
-                CardDivider()
-                AlpineProfileRow(
-                    title = stringResource(R.string.settings_chrome_environment),
-                    subtitle = "chromium, noVNC, Noto fonts",
-                    profileState = packageProfiles["chrome"],
-                    installProgress = installProgress["chrome"],
-                    enabled = setupState.isReady,
-                    onInstall = { onInstallPackageProfile("chrome") },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AlpineProfileRow(
-    title: String,
-    subtitle: String,
-    profileState: PackageProfileState?,
-    installProgress: AlpineSetupProgress?,
-    enabled: Boolean,
-    onInstall: () -> Unit,
-) {
-    val isInstalling = installProgress != null
-    val progressText = installProgress?.let { alpinePackageProgressText(it) }
-    val progressButtonText = installProgress?.let { alpinePackageProgressValue(it) }
-    val persistedError = profileState?.lastError
-        ?.takeUnless { it == "Installing..." }
-        .orEmpty()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium, color = SunshineOnSurface)
-            Spacer(Modifier.height(2.dp))
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = SunshineOnSurfaceVariant)
-            if (progressText != null) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = progressText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SunshinePrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            } else if (persistedError.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = persistedError,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SunshineOnSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        SettingsSubtleActionButton(
-            label = when {
-                isInstalling -> progressButtonText.orEmpty()
-                profileState?.installed == true -> stringResource(R.string.settings_installed)
-                else -> stringResource(R.string.common_install)
-            },
-            onClick = onInstall,
-            enabled = enabled && profileState?.installed != true && !isInstalling,
-        )
-    }
-}
-
-@Composable
-private fun RuntimeDefaultsPage(
-    title: String,
-    termuxReady: Boolean,
-    alpineReady: Boolean,
-    enabledRuntimeIds: Set<LocalRuntimeId>,
-    defaultRuntimeId: LocalRuntimeId?,
-    onSetDefaultRuntime: (LocalRuntimeId) -> Unit,
-    onBack: () -> Unit,
-) {
-    SubPageScaffold(title = title, onBack = onBack) {
-        Text(
-            text = stringResource(R.string.settings_runtime_defaults_description),
-            style = MaterialTheme.typography.bodySmall,
-            color = SunshineOnSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 4.dp),
-        )
-        Spacer(Modifier.height(16.dp))
-        SettingsCardGroup {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                SettingsChoiceRow(
-                    title = "Termux",
-                    subtitle = if (termuxReady) {
-                        stringResource(R.string.settings_runtime_termux_ready_subtitle)
-                    } else {
-                        stringResource(R.string.settings_runtime_termux_unavailable_subtitle)
-                    },
-                    selected = defaultRuntimeId == LocalRuntimeId.Termux,
-                    onClick = {
-                        if (termuxReady || LocalRuntimeId.Termux in enabledRuntimeIds) {
-                            onSetDefaultRuntime(LocalRuntimeId.Termux)
-                        }
-                    },
-                )
-                SettingsChoiceRow(
-                    title = "Alpine",
-                    subtitle = if (alpineReady) {
-                        stringResource(R.string.settings_runtime_alpine_ready_subtitle)
-                    } else {
-                        stringResource(R.string.settings_runtime_alpine_unavailable_subtitle)
-                    },
-                    selected = defaultRuntimeId == LocalRuntimeId.Alpine,
-                    onClick = {
-                        if (alpineReady || LocalRuntimeId.Alpine in enabledRuntimeIds) {
-                            onSetDefaultRuntime(LocalRuntimeId.Alpine)
-                        }
-                    },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun alpineSetupStatusText(
-    setupState: LocalRuntimeSetupState,
-): String = when (setupState.issue) {
-    LocalRuntimeIssue.Ready -> stringResource(R.string.settings_alpine_status_ready)
-    LocalRuntimeIssue.NotConfigured,
-    LocalRuntimeIssue.NotInstalled -> stringResource(R.string.settings_alpine_status_not_installed)
-    LocalRuntimeIssue.UnsupportedAbi -> stringResource(R.string.settings_alpine_status_unsupported_abi)
-    LocalRuntimeIssue.MissingAssets -> stringResource(R.string.settings_alpine_status_missing_assets)
-    LocalRuntimeIssue.Failed -> stringResource(R.string.settings_alpine_status_failed)
-    LocalRuntimeIssue.PermissionMissing,
-    LocalRuntimeIssue.ExternalAppsDisabled,
-    LocalRuntimeIssue.DispatchFailed -> stringResource(R.string.settings_alpine_status_not_ready)
 }
 
 @Composable
@@ -7194,7 +6821,6 @@ private fun AgentModeAuthorizationNotice(
 private fun DeveloperSettingsPage(
     title: String,
     onReplayFollowUpOnboarding: () -> Unit,
-    onReplayAlpineSetupPreview: () -> Unit,
     onImportAppData: () -> Unit,
     onExportAppData: () -> Unit,
     onExportLogs: () -> Unit,
@@ -7245,29 +6871,6 @@ private fun DeveloperSettingsPage(
             }
         }
 
-        Spacer(Modifier.height(14.dp))
-
-        SettingsCardGroup {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = stringResource(R.string.settings_replay_alpine_setup_preview),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = SunshineOnSurface,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.settings_replay_alpine_setup_preview_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SunshineOnSurfaceVariant,
-                )
-                Spacer(Modifier.height(16.dp))
-                SettingsSubtleActionButton(
-                    label = stringResource(R.string.settings_replay_setup_preview),
-                    onClick = onReplayAlpineSetupPreview,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
 
         Spacer(Modifier.height(14.dp))
 
@@ -7722,27 +7325,6 @@ private fun SettingsTopBar(
 }
 
 @Composable
-private fun alpinePackageProgressText(progress: AlpineSetupProgress): String {
-    val value = alpinePackageProgressValue(progress)
-    return when (progress.activity) {
-        AlpineSetupActivity.Extracting ->
-            stringResource(R.string.settings_profile_extracting_rate, value)
-        AlpineSetupActivity.Downloading ->
-            stringResource(R.string.settings_profile_downloading_rate, value)
-        AlpineSetupActivity.Installing ->
-            stringResource(R.string.settings_profile_installing_percent, value)
-        AlpineSetupActivity.None ->
-            stringResource(R.string.settings_profile_processing_rate, value)
-    }
-}
-
-private fun alpinePackageProgressValue(progress: AlpineSetupProgress): String =
-    if (progress.activity == AlpineSetupActivity.Installing) {
-        "${progress.progressPercent ?: 0}%"
-    } else {
-        formatTransferRate(progress.bytesPerSecond)
-    }
-
 private fun formatTransferRate(bytesPerSecond: Long): String {
     val rate = bytesPerSecond.coerceAtLeast(0L).toDouble()
     return when {

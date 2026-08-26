@@ -50,13 +50,13 @@ class RuntimePiBridgeTransportTest {
     }
 
     @Test
-    fun refusesToInitializeRuntimeWhenAlpineIsNotReady() = runTest {
+    fun refusesToInitializeRuntimeWhenTermuxIsNotReady() = runTest {
         val runtime = FakeRuntime(bridgeInstalled = false, runtimeReady = false)
         val transport = RuntimePiBridgeTransport(runtime)
 
         val failure = assertFailsWith<IllegalStateException> { transport.start() }
 
-        assertEquals("Initialize Alpine before starting the agent runtime.", failure.message)
+        assertEquals("Initialize the local runtime before starting the agent runtime.", failure.message)
         assertEquals(0, runtime.initializeCount)
         assertEquals(0, runtime.startCount)
     }

@@ -113,7 +113,7 @@ class SunshineSelfManagementTool(
         ),
         buildSunshineToolDefinition(
             name = "sunshine_runtime_manage",
-            description = "Read or switch the current chat session runtime. The switch applies to the next model call and preserves independent Alpine and Termux workspaces.",
+            description = "Read or switch the current chat session runtime. The switch applies to the next model call.",
             properties = JSONObject().apply {
                 put(
                     "action",
@@ -126,7 +126,7 @@ class SunshineSelfManagementTool(
                     "runtime",
                     JSONObject().apply {
                         put("type", "string")
-                        put("enum", JSONArray(listOf("alpine", "termux")))
+                        put("enum", JSONArray(listOf("termux")))
                     },
                 )
             },
@@ -908,7 +908,7 @@ class SunshineSelfManagementTool(
                     put(
                         JSONObject().apply {
                             put("type", "string")
-                            put("enum", JSONArray(listOf("default", "termux", "alpine")))
+                            put("enum", JSONArray(listOf("default", "termux")))
                         },
                     )
                     put(keyValueArraySchema("Environment variables for stdio MCP servers."))

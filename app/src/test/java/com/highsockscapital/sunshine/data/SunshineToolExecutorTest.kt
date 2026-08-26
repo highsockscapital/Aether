@@ -60,48 +60,5 @@ class SunshineToolExecutorTest {
         assertTrue(SunshineToolExecutor.inferToolOutputOk("plain text"))
     }
 
-    @Test
-    fun workspaceFileRoutingRecognizesAlpineAndTermuxRoots() {
-        assertEquals(
-            LocalRuntimeId.Alpine,
-            resolveWorkspaceRuntimeId(
-                path = "/workspace/agent-mode/capture.png",
-                workingDirectory = "",
-                defaultRuntimeId = LocalRuntimeId.Termux,
-            ),
-        )
-        assertEquals(
-            LocalRuntimeId.Termux,
-            resolveWorkspaceRuntimeId(
-                path = "/data/data/com.termux/files/home/.sunshine/workspace/uploads/image.png",
-                workingDirectory = "",
-                defaultRuntimeId = LocalRuntimeId.Alpine,
-            ),
-        )
-        assertEquals(
-            LocalRuntimeId.Alpine,
-            resolveWorkspaceRuntimeId(
-                path = "relative.png",
-                workingDirectory = "/workspace",
-                defaultRuntimeId = LocalRuntimeId.Termux,
-            ),
-        )
-        assertEquals(
-            LocalRuntimeId.Termux,
-            resolveWorkspaceRuntimeId(
-                path = "/data/data/com.termux/files/home/.sunshine/workspace/output.png",
-                workingDirectory = "/workspace",
-                defaultRuntimeId = LocalRuntimeId.Alpine,
-            ),
-        )
-        assertEquals(
-            LocalRuntimeId.Alpine,
-            resolveWorkspaceRuntimeId(
-                path = "file:///workspace/agent-mode/capture.png",
-                workingDirectory = "/data/data/com.termux/files/home/.sunshine/workspace",
-                defaultRuntimeId = LocalRuntimeId.Termux,
-            ),
-        )
-    }
 
 }

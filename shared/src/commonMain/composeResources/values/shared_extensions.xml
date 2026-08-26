@@ -26,7 +26,7 @@
     <string name="shared_extensions_import_too_large">The selected extension is larger than 32 MB.</string>
     <string name="shared_extensions_zip_unsafe">The extension archive contains an unsafe path.</string>
     <string name="shared_extensions_zip_invalid">The archive must contain a script extension package or an index JavaScript/TypeScript file.</string>
-    <string name="shared_extensions_platform_compatibility">This package appears to require a desktop operating system or CPU architecture that may not be available in Sunshine's iOS Alpine runtime.</string>
+    <string name="shared_extensions_platform_compatibility">This package appears to require a desktop operating system or CPU architecture that may not be available on Sunshine's iOS runtime.</string>
     <string name="shared_extensions_operation_in_progress">Applying extension changes…</string>
     <string name="shared_extensions_refresh_complete">Extensions refreshed.</string>
 </resources>

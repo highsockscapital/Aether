@@ -50,7 +50,7 @@ class RuntimeHostToolExecutorTest {
             result.string("stdout"),
         )
         assertEquals("docs/../docs/readme.txt", result.string("path"))
-        assertEquals("alpine", result.string("runtime"))
+        assertEquals("termux", result.string("runtime"))
         assertEquals("4", result["total_line_count"]!!.jsonPrimitive.content)
         assertTrue(result["truncated"]!!.jsonPrimitive.content.toBoolean())
     }
@@ -152,7 +152,7 @@ class RuntimeHostToolExecutorTest {
         assertEquals("hello world\n", json.string("stdout"))
         assertEquals("warning\n", json.string("stderr"))
         assertEquals("failed", json.string("status"))
-        assertEquals("alpine", json.string("runtime"))
+        assertEquals("termux", json.string("runtime"))
         assertEquals("7", json["exit_code"]!!.jsonPrimitive.content)
         assertEquals("/workspace/project", runtime.lastSpec!!.workingDirectory)
         assertEquals(listOf("-lc", "printf test"), runtime.lastSpec!!.arguments)

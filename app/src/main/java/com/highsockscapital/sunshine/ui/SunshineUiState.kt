@@ -17,7 +17,6 @@ import com.highsockscapital.sunshine.data.ScheduledTask
 import com.highsockscapital.sunshine.data.SessionExecutionState
 import com.highsockscapital.sunshine.data.pi.PiCoreSetupState
 import com.highsockscapital.sunshine.data.pi.PiProviderAuthState
-import com.highsockscapital.sunshine.runtime.AlpineSetupProgress
 import com.highsockscapital.sunshine.runtime.LocalRuntimeSetupState
 import com.highsockscapital.sunshine.termux.TermuxSetupState
 
@@ -34,7 +33,6 @@ enum class OnboardingStep {
     ProviderSetup,
     TermuxSetup,
     LocalRuntimeChoice,
-    AlpineSetup,
     AgentModeAuthorization,
     TavilySetup,
 }
@@ -280,10 +278,6 @@ data class SunshineUiState(
     val sessionExecutionStates: Map<String, SessionExecutionState> = emptyMap(),
     val unviewedCompletedSessionIds: Set<String> = emptySet(),
     val termuxSetupState: TermuxSetupState = TermuxSetupState(),
-    val alpineSetupState: LocalRuntimeSetupState = LocalRuntimeSetupState(
-        runtimeId = com.highsockscapital.sunshine.data.LocalRuntimeId.Alpine,
-    ),
-    val alpinePackageInstallProgress: Map<String, AlpineSetupProgress> = emptyMap(),
     val developerTermuxReadyOverride: Boolean? = null,
     val rootSetupState: RootSetupState = RootSetupState(),
     val rootSetupProgressReturnPage: RootSetupProgressReturnPage? = null,
@@ -308,7 +302,6 @@ data class SunshineUiState(
     val isFetchingModels: Boolean = false,
     val providerAuthState: PiProviderAuthState = PiProviderAuthState(),
     val piCoreSetupState: PiCoreSetupState = PiCoreSetupState(),
-    val developerAlpineSetupPreviewState: PiCoreSetupState? = null,
     val showStarterPromptHint: Boolean = false,
     val awaitingFollowUpTour: Boolean = false,
     val showFollowUpTourCard: Boolean = false,

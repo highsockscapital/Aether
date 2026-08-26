@@ -136,7 +136,6 @@ import com.highsockscapital.sunshine.platform.LocalReduceMotion
 import com.highsockscapital.sunshine.mod.SunshineNativeModState
 import com.highsockscapital.sunshine.runtime.LocalRuntimeIssue
 import com.highsockscapital.sunshine.runtime.LocalRuntimeSetupState
-import com.highsockscapital.sunshine.runtime.AndroidAlpineFileManagerRuntime
 import com.highsockscapital.sunshine.termux.TermuxContract
 import com.highsockscapital.sunshine.termux.TermuxSetupIssue
 import com.highsockscapital.sunshine.termux.TermuxSetupState
@@ -280,8 +279,7 @@ fun SunshineApp(
         }
     }
 
-    LaunchedEffect(extensionManager, extensionContext.toString(), uiState.alpineSetupState.isReady) {
-        if (!uiState.alpineSetupState.isReady) return@LaunchedEffect
+    LaunchedEffect(extensionManager, extensionContext.toString()) {
         extensionManager.start(extensionContext)
         extensionManager.updateContext(extensionContext)
     }
@@ -483,9 +481,6 @@ private fun SunshineAppContent(
         (context.applicationContext as SunshineApplication).runtime
     }
     val workspaceFileBridge = appRuntime.workspaceFileBridge
-    val alpineFileManagerRuntime = remember(appRuntime.alpineRuntime) {
-        AndroidAlpineFileManagerRuntime(appRuntime.alpineRuntime)
-    }
     val runtimeWorkspaceFileBridge = appRuntime.runtimeWorkspaceFileBridge
     val activeSession = uiState.sessions.firstOrNull { it.id == uiState.currentSessionId }
     val activeProviderConfig = uiState.providerConfigs.firstOrNull { it.isEnabled }
@@ -515,9 +510,8 @@ private fun SunshineAppContent(
         effectiveTermuxSetupState.isReady &&
         uiState.agentModeAuthorizationState.isReady
     val agentModeSelected = activeSession?.agentModeEnabled ?: uiState.draftAgentModeEnabled
-    val chromeAvailable = uiState.alpineSetupState.isReady &&
-        uiState.settings.alpinePackageProfiles["chrome"]?.installed == true
-    val chromeSelected = activeSession?.chromeEnabled ?: uiState.draftChromeEnabled
+    val chromeAvailable = false
+    val chromeSelected = false
     val conversationModelOptions = remember(uiState.providerConfigs) {
         uiState.providerConfigs.availableModelOptions()
     }
@@ -885,21 +879,12 @@ private fun SunshineAppContent(
                     AppScreen.Onboarding -> OnboardingScreen(
                         initialStep = uiState.onboardingStep,
                         replayMode = uiState.isOnboardingReplay,
-                        setupPreviewMode = uiState.developerAlpineSetupPreviewState != null,
+                        setupPreviewMode = false,
                         existingProviderConfig = activeProviderConfig,
                         isFetchingModels = uiState.isFetchingModels,
                         providerAuthState = uiState.providerAuthState,
-                        piCoreSetupState = uiState.developerAlpineSetupPreviewState
-                            ?: uiState.piCoreSetupState,
+                        piCoreSetupState = uiState.piCoreSetupState,
                         termuxSetupState = effectiveTermuxSetupState,
-                        alpineSetupState = if (uiState.developerAlpineSetupPreviewState != null) {
-                            LocalRuntimeSetupState(
-                                runtimeId = LocalRuntimeId.Alpine,
-                                issue = LocalRuntimeIssue.Ready,
-                            )
-                        } else {
-                            uiState.alpineSetupState
-                        },
                         rootSetupState = uiState.rootSetupState,
                         agentModeAuthorizationMethod = uiState.settings.agentModeAuthorizationMethod,
                         tavilyApiKey = uiState.settings.tavilyApiKey,
@@ -925,27 +910,6 @@ private fun SunshineAppContent(
                             startTermuxSetupAction("onboarding_install_termux") { openTermuxInstallPage(context) }
                         },
                         onRefreshTermuxSetup = viewModel::refreshTermuxSetup,
-                        onInitializeAlpineRuntime = {
-                            if (uiState.developerAlpineSetupPreviewState != null) {
-                                viewModel.restartDeveloperAlpineSetupPreview()
-                            } else {
-                                viewModel.initializeAlpineRuntime(makeDefault = true)
-                            }
-                        },
-                        onRetryAlpineSetup = {
-                            if (uiState.developerAlpineSetupPreviewState != null) {
-                                viewModel.restartDeveloperAlpineSetupPreview()
-                            } else {
-                                viewModel.retryAlpineRuntimeSetup(makeDefault = true)
-                            }
-                        },
-                        onRefreshAlpineSetup = {
-                            if (uiState.developerAlpineSetupPreviewState != null) {
-                                viewModel.restartDeveloperAlpineSetupPreview()
-                            } else {
-                                viewModel.refreshAlpineSetup(startPiIfReady = true)
-                            }
-                        },
                         onRefreshRootSetup = viewModel::refreshRootSetup,
                         onConfigureWithRoot = {
                             runRootSetupAfterTermuxPermission(
@@ -1125,12 +1089,8 @@ private fun SunshineAppContent(
                     usageStatisticsSnapshots = uiState.usageStatisticsSnapshots,
                     scheduledTasks = uiState.scheduledTasks,
                     termuxSetupState = effectiveTermuxSetupState,
-                    alpineSetupState = uiState.alpineSetupState,
                     enabledRuntimeIds = uiState.settings.enabledRuntimeIds,
                     defaultRuntimeId = uiState.settings.defaultRuntimeId,
-                    alpinePackageProfiles = uiState.settings.alpinePackageProfiles,
-                    alpinePackageInstallProgress = uiState.alpinePackageInstallProgress,
-                    alpineFileManagerRuntime = alpineFileManagerRuntime,
                     developerTermuxReadyOverride = uiState.developerTermuxReadyOverride,
                     installedSkills = uiState.installedSkills,
                     installedPiExtensions = uiState.installedPiExtensions,
@@ -1226,13 +1186,6 @@ private fun SunshineAppContent(
                         startTermuxSetupAction("settings_install_termux") { openTermuxInstallPage(context) }
                     },
                     onRefreshTermuxSetup = viewModel::refreshTermuxSetup,
-                    onInitializeAlpineRuntime = { viewModel.initializeAlpineRuntime(makeDefault = false) },
-                    onResetAlpineRuntime = viewModel::resetAlpineRuntime,
-                    onRefreshAlpineSetup = { viewModel.refreshAlpineSetup(startPiIfReady = true) },
-                    onInstallAlpinePackageProfile = viewModel::installAlpinePackageProfile,
-                    onCreateAlpineTerminalLaunchSpec = viewModel::createAlpineTerminalLaunchSpec,
-                    onStartAlpineChrome = viewModel::startAlpineChrome,
-                    onShouldShowAlpineChromeKeyboard = viewModel::shouldShowAlpineChromeKeyboard,
                     onSetDefaultRuntime = viewModel::setDefaultRuntime,
                     onRefreshRootSetup = viewModel::refreshRootSetup,
                     onStartRootSetupFromSettings = { returnPage ->
@@ -1248,7 +1201,6 @@ private fun SunshineAppContent(
                     onInstallShizuku = { openShizukuInstallPage(context) },
                     onReplayOnboarding = viewModel::openOnboardingFromSettings,
                     onReplayFollowUpOnboarding = viewModel::openFollowUpOnboardingFromSettings,
-                    onReplayAlpineSetupPreview = viewModel::openDeveloperAlpineSetupPreview,
                     onStopAgentModeDisplay = viewModel::stopAgentModeDisplay,
                     onRefreshAgentModeDisplays = viewModel::refreshAgentModeDisplays,
                     onOpenWebsite = { openExternalUrl(context, SunshineWebsiteUrl) },

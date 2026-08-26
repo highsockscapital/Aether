@@ -88,7 +88,7 @@ class AgentExtensionsSerializationTest {
                     environment = listOf(
                         McpKeyValue("DEBUG", "1"),
                     ),
-                    runtimeEnvironment = LocalRuntimeId.Alpine,
+                    runtimeEnvironment = LocalRuntimeId.Termux,
                 ),
                 isEnabled = false,
             ),
@@ -108,7 +108,7 @@ class AgentExtensionsSerializationTest {
             (reparsed[1].transport as McpTransportConfig.StdIo).arguments,
         )
         assertEquals(
-            LocalRuntimeId.Alpine,
+            LocalRuntimeId.Termux,
             (reparsed[1].transport as McpTransportConfig.StdIo).runtimeEnvironment,
         )
     }
@@ -125,7 +125,7 @@ class AgentExtensionsSerializationTest {
                   "command": "python",
                   "arguments": ["server.py"],
                   "workingDirectory": "/workspace",
-                  "environment": "alpine"
+                  "environment": "termux"
                 }
               }
             ]
@@ -134,7 +134,7 @@ class AgentExtensionsSerializationTest {
         val reparsed = parseMcpServerConfigs(raw)
         val transport = reparsed.single().transport as McpTransportConfig.StdIo
 
-        assertEquals(LocalRuntimeId.Alpine, transport.runtimeEnvironment)
+        assertEquals(LocalRuntimeId.Termux, transport.runtimeEnvironment)
         assertEquals(emptyList<McpKeyValue>(), transport.environment)
     }
 

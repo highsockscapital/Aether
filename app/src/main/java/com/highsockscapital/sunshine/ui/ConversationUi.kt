@@ -160,7 +160,6 @@ import com.highsockscapital.sunshine.R
 import com.highsockscapital.sunshine.data.InstalledSkill
 import com.highsockscapital.sunshine.data.AppLanguage
 import com.highsockscapital.sunshine.data.AgentModeDisplayState
-import com.highsockscapital.sunshine.data.AlpineChromeViewerUrl
 import com.highsockscapital.sunshine.data.McpServerConfig
 import com.highsockscapital.sunshine.data.McpTransportConfig
 import com.highsockscapital.sunshine.data.ModelCatalogInfo
@@ -1527,7 +1526,6 @@ private fun PendingAssistantTimeline(
                 label = stringResource(R.string.chrome_label),
                 contentDescription = stringResource(R.string.chrome_label),
                 pendingText = stringResource(R.string.chat_chrome_preview_pending),
-                useLiveSurface = false,
                 overlayText = chromeOverlayText,
                 onAttachSurface = {},
                 onDetachSurface = {},
@@ -3026,7 +3024,6 @@ private fun AgentModePreviewPanel(
     label: String? = null,
     contentDescription: String? = null,
     pendingText: String? = null,
-    useLiveSurface: Boolean = true,
     overlayText: String = "",
     workspaceDirectory: String = "",
     allowRootImageRead: Boolean = false,
@@ -3059,7 +3056,7 @@ private fun AgentModePreviewPanel(
             AgentModePreviewHeader(
                 displayState = displayState,
                 label = resolvedLabel,
-                isChrome = !useLiveSurface,
+                isChrome = false,
             )
         }
         if (displayState.isActive || bitmap != null) {
@@ -3096,25 +3093,11 @@ private fun AgentModePreviewPanel(
                     animationSpec = tween(durationMillis = animationDurationMillis, easing = ChatGptMotionEasing),
                     label = "agent_mode_cursor_offset",
                 )
-                if (displayState.isActive && useLiveSurface) {
+                if (displayState.isActive) {
                     AgentModeLivePreviewSurface(
                         displayState = displayState,
                         onAttachSurface = onAttachSurface,
                         onDetachSurface = onDetachSurface,
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .padding(10.dp)
-                            .aspectRatio(
-                                displayState.width.coerceAtLeast(1).toFloat() /
-                                    displayState.height.coerceAtLeast(1).toFloat(),
-                                matchHeightConstraintsFirst = true,
-                            )
-                            .clip(RoundedCornerShape(14.dp)),
-                    )
-                } else if (displayState.isActive && !useLiveSurface) {
-                    PlatformWebView(
-                        url = AlpineChromeViewerUrl,
-                        scrollEnabled = false,
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(10.dp)

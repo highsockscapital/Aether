@@ -12,11 +12,11 @@ class PiAgentPromptTest {
         val instructions = buildPiAgentInstructions(
             settings = AppSettings(),
             workspaceDirectory = "/workspace",
-            runtimeId = LocalRuntimeId.Alpine,
+            runtimeId = LocalRuntimeId.Termux,
             agentModeEnabled = false,
         )
 
-        assertTrue(instructions.contains("current local runtime is alpine"))
+        assertTrue(instructions.contains("current local runtime is termux"))
         assertTrue(instructions.contains("use read on the provided path"))
         assertFalse(instructions.contains("analyze_image"))
         assertFalse(instructions.contains("fetch_web_url"))
@@ -29,13 +29,13 @@ class PiAgentPromptTest {
         val disabledInstructions = buildPiAgentInstructions(
             settings = AppSettings(),
             workspaceDirectory = "/workspace",
-            runtimeId = LocalRuntimeId.Alpine,
+            runtimeId = LocalRuntimeId.Termux,
             agentModeEnabled = false,
         )
         val enabledInstructions = buildPiAgentInstructions(
             settings = AppSettings(),
             workspaceDirectory = "/workspace",
-            runtimeId = LocalRuntimeId.Alpine,
+            runtimeId = LocalRuntimeId.Termux,
             agentModeEnabled = false,
             chromeEnabled = true,
         )
