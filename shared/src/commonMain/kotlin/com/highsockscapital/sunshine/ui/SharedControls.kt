@@ -1,6 +1,7 @@
 package com.highsockscapital.sunshine.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
@@ -19,8 +20,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
+import com.highsockscapital.sunshine.ui.theme.SunshineOutline
 
-private val HeaderControlHalo = Color(0x18000000)
 
 @Composable
 fun HeaderCircleButton(
@@ -37,17 +38,9 @@ fun HeaderCircleButton(
     showHalo: Boolean = true,
 ) {
     Box(modifier = modifier.size(size)) {
-        if (showHalo) {
-            Box(
-                modifier = Modifier.matchParentSize()
-                    .offset(y = 4.dp)
-                    .blur(14.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                    .clip(CircleShape)
-                    .background(HeaderControlHalo),
-            )
-        }
         Box(
             modifier = Modifier.matchParentSize()
+                .border(width = if (showHalo) 1.dp else 0.dp, color = SunshineOutline, shape = CircleShape)
                 .clip(CircleShape)
                 .background(if (enabled) containerColor else containerColor.copy(alpha = 0.55f))
                 .clickable(enabled = enabled, onClick = onClick),

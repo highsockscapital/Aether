@@ -221,8 +221,6 @@ private val ComposerFocusedCardShape = RoundedCornerShape(28.dp)
 private val ComposerPlusMenuMaxHeight = 372.dp
 private const val ComposerPopupActionDelayMillis = 240L
 private const val MinimumWallClockMillis = 946_684_800_000L
-private val ChatGptControlShadow = Color(0x14000000)
-private val ChatGptComposerShadow = Color(0x18000000)
 private val ChatGptMotionEasing = CubicBezierEasing(0.22f, 0.84f, 0.18f, 1f)
 
 internal enum class PendingGenerationIndicator {
@@ -958,15 +956,9 @@ private fun ConversationModelSelector(
                     anchorHeightPx = bounds.height.toInt()
                 },
         ) {
-            Box(
-                modifier = Modifier.matchParentSize()
-                    .offset(y = 4.dp)
-                    .blur(14.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(ChatGptControlShadow),
-            )
             Row(
                 modifier = Modifier.height(38.dp)
+                    .border(1.dp, SunshineOutline, RoundedCornerShape(999.dp))
                     .clip(RoundedCornerShape(999.dp))
                     .background(SunshineSurface.copy(alpha = 0.96f))
                     .clickable(enabled = options.isNotEmpty()) {
@@ -2546,17 +2538,6 @@ private fun ConversationComposerBar(
                     .fillMaxWidth()
                     .padding(start = fieldStartPadding)
             ) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .offset(y = 8.dp)
-                        .blur(
-                            radius = 22.dp,
-                            edgeTreatment = BlurredEdgeTreatment.Unbounded,
-                        )
-                        .clip(fieldShape)
-                        .background(ChatGptComposerShadow),
-                )
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2564,6 +2545,7 @@ private fun ConversationComposerBar(
                         .animateContentSize(
                             animationSpec = tween(durationMillis = 320, easing = ChatGptMotionEasing),
                         )
+                        .border(1.dp, SunshineOutline, fieldShape)
                         .clip(fieldShape)
                         .background(SunshineSurface)
                         .padding(

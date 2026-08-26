@@ -48,8 +48,6 @@ import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
 import com.highsockscapital.sunshine.platform.LocalReduceMotion
 import com.highsockscapital.sunshine.ui.theme.SunshineSurface
 
-private val ConversationControlShadow = Color(0x14000000)
-private val ConversationControlHalo = Color(0x18000000)
 private val ConversationMotionEasing = CubicBezierEasing(0.22f, 0.84f, 0.18f, 1f)
 
 @Composable
@@ -105,15 +103,9 @@ fun SunshineSimpleModelSelector(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxWidth().height(38.dp)) {
-        Box(
-            modifier = Modifier.matchParentSize()
-                .offset(y = 4.dp)
-                .blur(14.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                .clip(RoundedCornerShape(999.dp))
-                .background(ConversationControlHalo),
-        )
         Row(
             modifier = Modifier.matchParentSize()
+                .border(1.dp, SunshineOutline, RoundedCornerShape(999.dp))
                 .clip(RoundedCornerShape(999.dp))
                 .background(SunshineSurface.copy(alpha = 0.96f))
                 .padding(horizontal = 17.dp),
