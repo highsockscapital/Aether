@@ -483,6 +483,25 @@ private fun parseImportedTermuxEnvironmentVariables(value: JsonArray?): List<Ter
     }.distinctBy(TermuxEnvironmentVariable::name)
 
 
+private fun JsonObject.stringValue(name: String): String =
+    (this[name] as? JsonPrimitive)?.contentOrNull.orEmpty()
+
+private fun JsonObject.stringValueOrDefault(name: String, fallback: String): String =
+    (this[name] as? JsonPrimitive)?.contentOrNull ?: fallback
+
+private fun JsonObject.booleanValueOrDefault(name: String, fallback: Boolean): Boolean =
+    (this[name] as? JsonPrimitive)?.booleanOrNull ?: fallback
+
+private fun JsonObject.intValueOrDefault(name: String, fallback: Int): Int =
+    (this[name] as? JsonPrimitive)?.intOrNull ?: fallback
+
+private fun JsonObject.longValueOrDefault(name: String, fallback: Long): Long =
+    (this[name] as? JsonPrimitive)?.longOrNull ?: fallback
+
+private fun JsonArray?.toTrimmedStringList(): List<String> = orEmpty().mapNotNull { element ->
+    (element as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf(String::isNotEmpty)
+}
+
 private fun JsonArray.usesAndroidChatSchema(): Boolean = any { session ->
     val sessionObject = session as? JsonObject ?: return@any true
     if ("agentModeEnabled" in sessionObject || "activeSkillsJson" in sessionObject) return@any true
