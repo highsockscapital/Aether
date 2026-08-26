@@ -1682,11 +1682,7 @@ private fun ChatScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(SunshineBackground, Color(0xFF0B0B0D), Color(0xFF070708))
-                    )
-                )
+                .background(SunshineBackground)
                 .padding(innerPadding)
         ) {
             if (messages.isEmpty()) {
