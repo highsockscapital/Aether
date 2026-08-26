@@ -856,19 +856,19 @@ class PiKernelBridge(
 
     /** Launches node inside Termux as a managed background run with a FIFO stdin. */
     private suspend fun startTermuxBridgeProcess(): String {
+        // NOTE: must be a newline-separated script. A single-line version with
+        // `&` after the holder subshell backgrounds the entire preceding
+        // `cd && rm && mkfifo` chain, letting `node < fifo` race against mkfifo.
         val launchResult = guestFiles.execute(
-            command = buildString {
-                append("cd ${TermuxGuestFiles.shellQuote(PiBridgeWorkingDirectory)} && ")
-                append("rm -f ${q("bridge.log")} ${q("bridge.in")} ${q("bridge.exit")} ")
-                append("${q("node.pid")} ${q("stdout.offset")} && ")
-                append("mkfifo ${q("bridge.in")} && ")
-                append("( echo $$ > ${q("holder.pid")}; exec sleep infinity ) ")
-                append("> ${q("bridge.in")} 2>/dev/null & ")
-                append("nohup node ${q(PiBridgeGuestPath)} < ${q("bridge.in")} ")
-                append(">> ${q("bridge.log")} 2>&1 & ")
-                append("echo $! > ${q("node.pid")} && ")
-                append("echo BRIDGE_LAUNCHED")
-            },
+            command = listOf(
+                "cd ${TermuxGuestFiles.shellQuote(PiBridgeWorkingDirectory)} || exit 1",
+                "rm -f ${q("bridge.log")} ${q("bridge.in")} ${q("bridge.exit")} ${q("node.pid")} ${q("stdout.offset")}",
+                "mkfifo ${q("bridge.in")} || exit 1",
+                "( echo $$ > ${q("holder.pid")}; exec sleep infinity ) > ${q("bridge.in")} 2>/dev/null &",
+                "nohup node ${q(PiBridgeGuestPath)} < ${q("bridge.in")} >> ${q("bridge.log")} 2>&1 &",
+                "echo $! > ${q("node.pid")}",
+                "echo BRIDGE_LAUNCHED",
+            ).joinToString(separator = "\n"),
             workingDirectory = PiBridgeWorkingDirectory,
         )
         require(launchResult.optBoolean("ok")) {
