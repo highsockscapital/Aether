@@ -1006,7 +1006,7 @@ class PiExtensionManager(
     private fun installPreinstalledExtensionsIntoMirror() {
         val target = ensureImportedExtensionsRoot(SunshineExtensionGuestDirectory)
         val assets = runCatching {
-            appContext.assets.list("preinstalledExtensions/extensions")
+            appContext.assets.list("preinstalledExtensions/extensions").orEmpty()
         }.getOrDefault(emptyArray())
         if (assets.isEmpty()) return
         for (name in assets) {
