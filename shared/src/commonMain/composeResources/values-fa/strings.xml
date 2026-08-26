@@ -893,7 +893,7 @@
     <string name="onboarding_alpine_status_failed">آلپاین نتوانست شروع کند. می‌توانید بعداً از تنظیمات دوباره امتحان کنید.</string>
     <string name="onboarding_alpine_status_not_ready">آلپاین هنوز آماده نیست.</string>
     <string name="onboarding_pi_setup_pending">موتور هوش مصنوعی هنوز بررسی نشده است.</string>
-    <string name="onboarding_pi_setup_checking_alpine">بررسی محیط آلپاین</string>
+    <string name="onboarding_pi_setup_checking_runtime">بررسی محیط اجرا</string>
     <string name="onboarding_pi_setup_checking_node">بررسی نسخه Node.js</string>
     <string name="onboarding_pi_setup_installing_node">نصب Node.js در داخل Alpine</string>
     <string name="onboarding_pi_setup_preparing_bridge">آماده سازی موتور هوش مصنوعی</string>

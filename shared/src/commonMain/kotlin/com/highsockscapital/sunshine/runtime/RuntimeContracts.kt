@@ -83,7 +83,7 @@ interface MultiplatformLocalRuntime {
     val workspaceRoot: String
     val fileSystem: RuntimeFileSystem
 
-    suspend fun isReady(): Boolean = fileSystem.exists("/etc/alpine-release")
+    suspend fun isReady(): Boolean = true
     suspend fun initialize(onProgress: (RuntimeSetupProgress) -> Unit = {})
     suspend fun resetForRetry() = reset()
     suspend fun reset() {

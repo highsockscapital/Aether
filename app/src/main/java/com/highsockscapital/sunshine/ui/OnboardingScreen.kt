@@ -1047,7 +1047,7 @@ private fun PiCoreSetupProgress(
     var organicProgress by remember { mutableStateOf(0f) }
     val phaseProgress = currentStep.toFloat() / stepCount
     LaunchedEffect(setupState.isChecking, setupState.isReady, setupState.phase) {
-        if (setupState.isChecking && setupState.phase == PiCoreSetupPhase.CheckingAlpine) {
+        if (setupState.isChecking && setupState.phase == PiCoreSetupPhase.CheckingRuntime) {
             organicProgress = phaseProgress
         }
         organicProgress = maxOf(organicProgress, phaseProgress)
@@ -1246,7 +1246,7 @@ private fun piCoreSetupStatusText(
     setupState: PiCoreSetupState,
 ): String = when (setupState.phase) {
     PiCoreSetupPhase.Idle -> stringResource(R.string.onboarding_pi_setup_pending)
-    PiCoreSetupPhase.CheckingAlpine -> stringResource(R.string.onboarding_pi_setup_checking_alpine)
+    PiCoreSetupPhase.CheckingRuntime -> stringResource(R.string.onboarding_pi_setup_checking_runtime)
     PiCoreSetupPhase.CheckingNode -> stringResource(R.string.onboarding_pi_setup_checking_node)
     PiCoreSetupPhase.InstallingNode -> stringResource(R.string.onboarding_pi_setup_installing_node)
     PiCoreSetupPhase.PreparingBridge -> stringResource(R.string.onboarding_pi_setup_preparing_bridge)

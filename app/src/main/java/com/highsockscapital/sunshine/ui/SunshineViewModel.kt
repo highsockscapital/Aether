@@ -751,7 +751,7 @@ class SunshineViewModel(
                     ),
                     piCoreSetupState = PiCoreSetupState(
                         isChecking = true,
-                        phase = PiCoreSetupPhase.CheckingAlpine,
+                        phase = PiCoreSetupPhase.CheckingRuntime,
                         output = "Starting Alpine setup...\n",
                     ),
                 )
@@ -780,7 +780,7 @@ class SunshineViewModel(
                         piCoreSetupState = current.piCoreSetupState.copy(
                             isChecking = false,
                             phase = PiCoreSetupPhase.Failed,
-                            failedAtPhase = PiCoreSetupPhase.CheckingAlpine,
+                            failedAtPhase = PiCoreSetupPhase.CheckingRuntime,
                             detail = detail,
                             output = appendSetupOutput(
                                 current.piCoreSetupState.output,
@@ -826,7 +826,7 @@ class SunshineViewModel(
             current.copy(
                 piCoreSetupState = PiCoreSetupState(
                     isChecking = true,
-                    phase = PiCoreSetupPhase.CheckingAlpine,
+                    phase = PiCoreSetupPhase.CheckingRuntime,
                     output = "Starting Alpine setup...\n",
                 )
             )
@@ -835,7 +835,7 @@ class SunshineViewModel(
             runtime.alpineRuntime.initialize { progress ->
                 applyPiCoreSetupUpdate(
                     PiCoreSetupUpdate(
-                        phase = PiCoreSetupPhase.CheckingAlpine,
+                        phase = PiCoreSetupPhase.CheckingRuntime,
                         activity = when (progress.activity) {
                             AlpineSetupActivity.Extracting -> PiCoreSetupActivity.Extracting
                             AlpineSetupActivity.Downloading -> PiCoreSetupActivity.Downloading
@@ -874,7 +874,7 @@ class SunshineViewModel(
                     piCoreSetupState = current.piCoreSetupState.copy(
                         isChecking = false,
                         phase = PiCoreSetupPhase.Failed,
-                        failedAtPhase = PiCoreSetupPhase.CheckingAlpine,
+                        failedAtPhase = PiCoreSetupPhase.CheckingRuntime,
                         detail = setupState.detail,
                         activity = PiCoreSetupActivity.None,
                         bytesPerSecond = 0L,
@@ -895,7 +895,7 @@ class SunshineViewModel(
             it.copy(
                 piCoreSetupState = PiCoreSetupState(
                     isChecking = true,
-                    phase = PiCoreSetupPhase.CheckingAlpine,
+                    phase = PiCoreSetupPhase.CheckingRuntime,
                     output = it.piCoreSetupState.output.ifBlank { "Starting agent runtime setup...\n" },
                 )
             )
@@ -1376,10 +1376,10 @@ class SunshineViewModel(
                 }
             }
 
-            update(PiCoreSetupPhase.CheckingAlpine, output = "Starting Alpine setup preview...\n")
+            update(PiCoreSetupPhase.CheckingRuntime, output = "Starting Alpine setup preview...\n")
             delay(700L)
             update(
-                phase = PiCoreSetupPhase.CheckingAlpine,
+                phase = PiCoreSetupPhase.CheckingRuntime,
                 activity = PiCoreSetupActivity.Extracting,
                 bytesPerSecond = 18L * 1024L * 1024L,
                 output = "Preparing Alpine runtime files...\n",
@@ -1394,7 +1394,7 @@ class SunshineViewModel(
             )
             extractionEntries.forEachIndexed { index, path ->
                 update(
-                    phase = PiCoreSetupPhase.CheckingAlpine,
+                    phase = PiCoreSetupPhase.CheckingRuntime,
                     activity = PiCoreSetupActivity.Extracting,
                     bytesPerSecond = (18L + index * 3L) * 1024L * 1024L,
                     output = "Extracting $path\n",

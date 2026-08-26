@@ -166,7 +166,7 @@ class SharedAppDataManager(
                 chatSessionId = piSession.sessionId,
                 piSessionId = piSession.sessionId,
                 jsonlPath = sessionFile,
-                runtime = "alpine",
+                runtime = "termux",
             )
         }
 
@@ -338,22 +338,6 @@ private fun AppSettings.toAndroidAppSettingsJson(): JsonObject = buildJsonObject
         enabledRuntimeIds.forEach { add(JsonPrimitive(it.storageValue)) }
     })
     put("defaultRuntimeId", defaultRuntimeId?.let { JsonPrimitive(it.storageValue) } ?: JsonNull)
-    put("alpineSetupCompleted", alpineSetupCompleted)
-    put("alpinePackageProfiles", buildJsonArray {
-        alpinePackageProfiles.values.forEach { profile ->
-            add(buildJsonObject {
-                put("profileId", profile.profileId)
-                put("installed", profile.installed)
-                put("installedAtMillis", profile.installedAtMillis)
-                put("lastError", profile.lastError)
-            })
-        }
-    })
-    put("alpineEnvironmentVariables", buildJsonArray {
-        alpineEnvironmentVariables.forEach { variable ->
-            add(buildJsonObject { put("name", variable.name); put("value", variable.value) })
-        }
-    })
     put("autoCleanOldCommandHistory", autoCleanOldCommandHistory)
     put("oldCommandHistoryRetentionHours", oldCommandHistoryRetentionHours)
     put("agentModeAuthorizationEnabled", agentModeAuthorizationEnabled)
@@ -441,16 +425,6 @@ private fun parseAndroidAppSettings(value: JsonObject): AppSettings {
             }
             .toSet(),
         defaultRuntimeId = LocalRuntimeId.fromStorage(value.stringValue("defaultRuntimeId")),
-        alpineSetupCompleted = value.booleanValueOrDefault(
-            "alpineSetupCompleted",
-            defaults.alpineSetupCompleted,
-        ),
-        alpinePackageProfiles = parseImportedPackageProfileStates(
-            value["alpinePackageProfiles"] as? JsonArray,
-        ),
-        alpineEnvironmentVariables = parseImportedAlpineEnvironmentVariables(
-            value["alpineEnvironmentVariables"] as? JsonArray,
-        ),
         agentModeAuthorizationEnabled = value.booleanValueOrDefault(
             "agentModeAuthorizationEnabled",
             defaults.agentModeAuthorizationEnabled,
@@ -508,50 +482,6 @@ private fun parseImportedTermuxEnvironmentVariables(value: JsonArray?): List<Ter
         TermuxEnvironmentVariable(name = name, value = item.stringValue("value"))
     }.distinctBy(TermuxEnvironmentVariable::name)
 
-private fun parseImportedAlpineEnvironmentVariables(value: JsonArray?): List<AlpineEnvironmentVariable> =
-    value.orEmpty().mapNotNull { element ->
-        val item = element as? JsonObject ?: return@mapNotNull null
-        val name = item.stringValue("name").trim()
-        if (!ImportedEnvironmentVariableNamePattern.matches(name)) return@mapNotNull null
-        AlpineEnvironmentVariable(name = name, value = item.stringValue("value"))
-    }.distinctBy(AlpineEnvironmentVariable::name)
-
-private fun parseImportedPackageProfileStates(value: JsonArray?): Map<String, PackageProfileState> =
-    buildMap {
-        value.orEmpty().forEach { element ->
-            val item = element as? JsonObject ?: return@forEach
-            val profileId = item.stringValue("profileId").trim()
-            if (profileId.isBlank()) return@forEach
-            put(
-                profileId,
-                PackageProfileState(
-                    profileId = profileId,
-                    installed = item.booleanValueOrDefault("installed", false),
-                    installedAtMillis = item.longValueOrDefault("installedAtMillis", 0L),
-                    lastError = item.stringValue("lastError"),
-                ),
-            )
-        }
-    }
-
-private fun JsonObject.stringValue(name: String): String =
-    (this[name] as? JsonPrimitive)?.contentOrNull.orEmpty()
-
-private fun JsonObject.stringValueOrDefault(name: String, fallback: String): String =
-    (this[name] as? JsonPrimitive)?.contentOrNull ?: fallback
-
-private fun JsonObject.booleanValueOrDefault(name: String, fallback: Boolean): Boolean =
-    (this[name] as? JsonPrimitive)?.booleanOrNull ?: fallback
-
-private fun JsonObject.intValueOrDefault(name: String, fallback: Int): Int =
-    (this[name] as? JsonPrimitive)?.intOrNull ?: fallback
-
-private fun JsonObject.longValueOrDefault(name: String, fallback: Long): Long =
-    (this[name] as? JsonPrimitive)?.longOrNull ?: fallback
-
-private fun JsonArray?.toTrimmedStringList(): List<String> = orEmpty().mapNotNull { element ->
-    (element as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf(String::isNotEmpty)
-}
 
 private fun JsonArray.usesAndroidChatSchema(): Boolean = any { session ->
     val sessionObject = session as? JsonObject ?: return@any true

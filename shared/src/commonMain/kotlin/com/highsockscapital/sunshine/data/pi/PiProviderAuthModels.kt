@@ -40,7 +40,7 @@ enum class PiCoreSetupPhase(
     val step: Int,
 ) {
     Idle(step = 0),
-    CheckingAlpine(step = 1),
+    CheckingRuntime(step = 1),
     CheckingNode(step = 2),
     InstallingNode(step = 2),
     PreparingBridge(step = 3),

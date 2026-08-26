@@ -114,24 +114,14 @@ class SettingsRepository(
             enabledRuntimeIds = resolveEnabledRuntimeIds(
                 rawValue = preferences[ENABLED_RUNTIME_IDS],
                 termuxSetupCompleted = preferences[TERMUX_SETUP_COMPLETED] ?: false,
-                alpineSetupCompleted = preferences[ALPINE_SETUP_COMPLETED] ?: false,
             ),
             defaultRuntimeId = resolveDefaultRuntimeId(
                 rawValue = preferences[DEFAULT_RUNTIME_ID],
                 enabledRuntimeIds = resolveEnabledRuntimeIds(
                     rawValue = preferences[ENABLED_RUNTIME_IDS],
                     termuxSetupCompleted = preferences[TERMUX_SETUP_COMPLETED] ?: false,
-                    alpineSetupCompleted = preferences[ALPINE_SETUP_COMPLETED] ?: false,
                 ),
                 termuxSetupCompleted = preferences[TERMUX_SETUP_COMPLETED] ?: false,
-                alpineSetupCompleted = preferences[ALPINE_SETUP_COMPLETED] ?: false,
-            ),
-            alpineSetupCompleted = preferences[ALPINE_SETUP_COMPLETED] ?: false,
-            alpinePackageProfiles = parsePackageProfileStates(
-                preferences[ALPINE_PACKAGE_PROFILES].orEmpty()
-            ),
-            alpineEnvironmentVariables = parseAlpineEnvironmentVariables(
-                preferences[ALPINE_ENVIRONMENT_VARIABLES].orEmpty()
             ),
             agentModeAuthorizationEnabled = preferences[AGENT_MODE_AUTHORIZATION_ENABLED] ?: false,
             agentModeAuthorizationMethod = AgentModeAuthorizationMethod.fromStorage(
@@ -341,10 +331,6 @@ class SettingsRepository(
             settings.defaultRuntimeId?.let { runtimeId ->
                 it[DEFAULT_RUNTIME_ID] = runtimeId.storageValue
             } ?: it.remove(DEFAULT_RUNTIME_ID)
-            it[ALPINE_SETUP_COMPLETED] = settings.alpineSetupCompleted
-            it[ALPINE_PACKAGE_PROFILES] = serializePackageProfileStates(settings.alpinePackageProfiles)
-            it[ALPINE_ENVIRONMENT_VARIABLES] =
-                serializeAlpineEnvironmentVariables(settings.alpineEnvironmentVariables)
             it[AGENT_MODE_AUTHORIZATION_ENABLED] = settings.agentModeAuthorizationEnabled
             it[AGENT_MODE_AUTHORIZATION_METHOD] = settings.agentModeAuthorizationMethod.storageValue
             it[LANGUAGE] = settings.language.storageValue
@@ -448,10 +434,6 @@ class SettingsRepository(
             settings.defaultRuntimeId?.let { runtimeId ->
                 prefs[DEFAULT_RUNTIME_ID] = runtimeId.storageValue
             } ?: prefs.remove(DEFAULT_RUNTIME_ID)
-            prefs[ALPINE_SETUP_COMPLETED] = settings.alpineSetupCompleted
-            prefs[ALPINE_PACKAGE_PROFILES] = serializePackageProfileStates(settings.alpinePackageProfiles)
-            prefs[ALPINE_ENVIRONMENT_VARIABLES] =
-                serializeAlpineEnvironmentVariables(settings.alpineEnvironmentVariables)
             prefs[AGENT_MODE_AUTHORIZATION_ENABLED] = settings.agentModeAuthorizationEnabled
             prefs[AGENT_MODE_AUTHORIZATION_METHOD] = settings.agentModeAuthorizationMethod.storageValue
             prefs[LANGUAGE] = settings.language.storageValue
@@ -558,12 +540,6 @@ class SettingsRepository(
             stringPreferencesKey("enabled_runtime_ids")
         val DEFAULT_RUNTIME_ID =
             stringPreferencesKey("default_runtime_id")
-        val ALPINE_SETUP_COMPLETED =
-            booleanPreferencesKey("alpine_setup_completed")
-        val ALPINE_PACKAGE_PROFILES =
-            stringPreferencesKey("alpine_package_profiles")
-        val ALPINE_ENVIRONMENT_VARIABLES =
-            stringPreferencesKey("alpine_environment_variables")
         val AGENT_MODE_AUTHORIZATION_ENABLED =
             booleanPreferencesKey("agent_mode_authorization_enabled")
         val AGENT_MODE_AUTHORIZATION_METHOD =
@@ -670,30 +646,14 @@ fun normalizeTermuxEnvironmentVariables(
         }
         .distinctBy { it.name }
 
-fun normalizeAlpineEnvironmentVariables(
-    variables: List<AlpineEnvironmentVariable>,
-): List<AlpineEnvironmentVariable> =
-    variables
-        .mapNotNull { variable ->
-            val name = variable.name.trim()
-            if (!TermuxEnvironmentVariableNamePattern.matches(name)) {
-                null
-            } else {
-                AlpineEnvironmentVariable(name = name, value = variable.value)
-            }
-        }
-        .distinctBy { it.name }
-
 private fun resolveEnabledRuntimeIds(
     rawValue: String?,
     termuxSetupCompleted: Boolean,
-    alpineSetupCompleted: Boolean,
 ): Set<LocalRuntimeId> {
     val stored = parseRuntimeIds(rawValue.orEmpty())
     if (stored.isNotEmpty() || rawValue != null) return stored
     return buildSet {
         if (termuxSetupCompleted) add(LocalRuntimeId.Termux)
-        if (alpineSetupCompleted) add(LocalRuntimeId.Alpine)
     }
 }
 
@@ -701,14 +661,12 @@ private fun resolveDefaultRuntimeId(
     rawValue: String?,
     enabledRuntimeIds: Set<LocalRuntimeId>,
     termuxSetupCompleted: Boolean,
-    alpineSetupCompleted: Boolean,
 ): LocalRuntimeId? {
     LocalRuntimeId.fromStorage(rawValue)?.let { runtimeId ->
         if (runtimeId in enabledRuntimeIds) return runtimeId
     }
     return when {
         termuxSetupCompleted && LocalRuntimeId.Termux in enabledRuntimeIds -> LocalRuntimeId.Termux
-        alpineSetupCompleted && LocalRuntimeId.Alpine in enabledRuntimeIds -> LocalRuntimeId.Alpine
         else -> enabledRuntimeIds.firstOrNull()
     }
 }
@@ -728,46 +686,6 @@ private fun parseRuntimeIds(rawValue: String): Set<LocalRuntimeId> {
 private fun serializeRuntimeIds(runtimeIds: Set<LocalRuntimeId>): String =
     JSONArray().apply {
         runtimeIds.sortedBy { it.storageValue }.forEach { put(it.storageValue) }
-    }.toString()
-
-private fun parsePackageProfileStates(rawValue: String): Map<String, PackageProfileState> {
-    if (rawValue.isBlank()) return emptyMap()
-    return runCatching {
-        val array = JSONArray(rawValue)
-        buildMap {
-            for (index in 0 until array.length()) {
-                val item = array.optJSONObject(index) ?: continue
-                val profileId = item.optString("profileId").trim()
-                    .ifBlank { item.optString("profile_id").trim() }
-                if (profileId.isBlank()) continue
-                put(
-                    profileId,
-                    PackageProfileState(
-                        profileId = profileId,
-                        installed = item.optBoolean("installed", false),
-                        installedAtMillis = item.optLong("installedAtMillis", 0L),
-                        lastError = item.optString("lastError"),
-                    )
-                )
-            }
-        }
-    }.getOrDefault(emptyMap())
-}
-
-private fun serializePackageProfileStates(
-    profiles: Map<String, PackageProfileState>,
-): String =
-    JSONArray().apply {
-        profiles.values.sortedBy { it.profileId }.forEach { profile ->
-            put(
-                JSONObject().apply {
-                    put("profileId", profile.profileId)
-                    put("installed", profile.installed)
-                    put("installedAtMillis", profile.installedAtMillis)
-                    put("lastError", profile.lastError)
-                }
-            )
-        }
     }.toString()
 
 private fun parseTermuxEnvironmentVariables(rawValue: String): List<TermuxEnvironmentVariable> {
@@ -790,45 +708,11 @@ private fun parseTermuxEnvironmentVariables(rawValue: String): List<TermuxEnviro
     }.getOrDefault(emptyList())
 }
 
-private fun parseAlpineEnvironmentVariables(rawValue: String): List<AlpineEnvironmentVariable> {
-    if (rawValue.isBlank()) return emptyList()
-    return runCatching {
-        val array = JSONArray(rawValue)
-        normalizeAlpineEnvironmentVariables(
-            buildList {
-                for (index in 0 until array.length()) {
-                    val item = array.optJSONObject(index) ?: continue
-                    add(
-                        AlpineEnvironmentVariable(
-                            name = item.optString("name"),
-                            value = item.optString("value"),
-                        )
-                    )
-                }
-            }
-        )
-    }.getOrDefault(emptyList())
-}
-
 private fun serializeTermuxEnvironmentVariables(
     variables: List<TermuxEnvironmentVariable>,
 ): String =
     JSONArray().apply {
         normalizeTermuxEnvironmentVariables(variables).forEach { variable ->
-            put(
-                JSONObject().apply {
-                    put("name", variable.name)
-                    put("value", variable.value)
-                }
-            )
-        }
-    }.toString()
-
-private fun serializeAlpineEnvironmentVariables(
-    variables: List<AlpineEnvironmentVariable>,
-): String =
-    JSONArray().apply {
-        normalizeAlpineEnvironmentVariables(variables).forEach { variable ->
             put(
                 JSONObject().apply {
                     put("name", variable.name)

@@ -781,7 +781,7 @@ class PiKernelBridge(
     private suspend fun ensureNodeAvailable(
         onSetupProgress: (PiCoreSetupUpdate) -> Unit,
     ) {
-        onSetupProgress(PiCoreSetupUpdate(PiCoreSetupPhase.CheckingAlpine))
+        onSetupProgress(PiCoreSetupUpdate(PiCoreSetupPhase.CheckingRuntime))
         // Require explicit Alpine initialize; never download/install here.
         val setup = alpineRuntime.inspectSetup()
         diagnosticLogger.event(

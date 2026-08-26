@@ -947,7 +947,7 @@
     <string name="onboarding_alpine_status_failed">Alpine could not start. You can retry later from Settings.</string>
     <string name="onboarding_alpine_status_not_ready">Alpine is not ready yet.</string>
     <string name="onboarding_pi_setup_pending">The AI engine has not been checked yet.</string>
-    <string name="onboarding_pi_setup_checking_alpine">Checking the Alpine environment</string>
+    <string name="onboarding_pi_setup_checking_runtime">Checking the agent runtime environment</string>
     <string name="onboarding_pi_setup_checking_node">Checking the Node.js version</string>
     <string name="onboarding_pi_setup_installing_node">Installing Node.js inside Alpine</string>
     <string name="onboarding_pi_setup_preparing_bridge">Preparing the AI engine</string>

@@ -9,8 +9,6 @@ data class PlatformCapabilities(
     val persistentBackground: Boolean,
     val localNotifications: Boolean = false,
     val nativeMods: Boolean,
-    val alpine: Boolean = true,
-    val alpineChrome: Boolean = true,
     val stdioMcp: Boolean = true,
     val scriptExtensions: Boolean = true,
     val layeredScreenTransitions: Boolean = true,

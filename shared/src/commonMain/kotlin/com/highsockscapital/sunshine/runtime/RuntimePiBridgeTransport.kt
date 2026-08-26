@@ -27,10 +27,8 @@ class RuntimePiBridgeTransport(
         activeProcess?.let { return@withLock it }
 
         check(runtime.isReady()) {
-            "Initialize Alpine before starting the agent runtime."
+            "Initialize the local runtime before starting the agent runtime."
         }
-        // The readiness check above prevents this call from installing
-        // Alpine implicitly when agent startup is what reached the bridge.
         runtime.initialize()
         check(runtime.fileSystem.exists(bridgePath)) {
             "Pi Bridge is not installed at $bridgePath."

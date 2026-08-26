@@ -940,7 +940,7 @@
     <string name="onboarding_alpine_status_failed">Alpine 未能启动。之后可以在设置里重试。</string>
     <string name="onboarding_alpine_status_not_ready">Alpine 尚未就绪。</string>
     <string name="onboarding_pi_setup_pending">尚未检查 AI 引擎。</string>
-    <string name="onboarding_pi_setup_checking_alpine">正在检查 Alpine 环境</string>
+    <string name="onboarding_pi_setup_checking_runtime">正在检查代理运行环境</string>
     <string name="onboarding_pi_setup_checking_node">正在检查 Node.js 版本</string>
     <string name="onboarding_pi_setup_installing_node">正在 Alpine 中安装 Node.js</string>
     <string name="onboarding_pi_setup_preparing_bridge">正在准备 AI 引擎</string>

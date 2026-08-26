@@ -2207,7 +2207,7 @@ private suspend fun loadWorkspaceImageBinary(
         byteLimit = MaxMarkdownImageBytes,
     )
     val payload = workspaceResult.getOrElse { workspaceThrowable ->
-        if (!allowRootImageRead || resolvedRuntimeId == LocalRuntimeId.Alpine) {
+        if (!allowRootImageRead) {
             error(
                 localReadFailure?.message
                     ?: workspaceThrowable.message
