@@ -29,7 +29,7 @@ class SunshineToolExecutor(
         argumentsJson: String,
         selfManagementTool: SunshineSelfManagementTool? = null,
         agentModeEnabled: Boolean = false,
-        currentRuntimeId: LocalRuntimeId = settings.defaultRuntimeId ?: LocalRuntimeId.Alpine,
+        currentRuntimeId: LocalRuntimeId = settings.defaultRuntimeId ?: LocalRuntimeId.Termux,
         onRuntimeChanged: suspend (LocalRuntimeId) -> Unit = {},
         onProgress: (suspend (String) -> Unit)? = null,
     ): SunshineToolExecutionResult {
@@ -102,7 +102,7 @@ class SunshineToolExecutor(
             return JSONObject().put("ok", false).put("errmsg", "action must be 'status' or 'set'.").toString()
         }
         val requested = LocalRuntimeId.fromStorage(arguments.optString("runtime"))
-            ?: return JSONObject().put("ok", false).put("errmsg", "runtime must be 'alpine' or 'termux'.").toString()
+            ?: return JSONObject().put("ok", false).put("errmsg", "runtime must be 'termux'.").toString()
         val setup = runtimeRouter.runtimeById(requested).inspectSetup()
         val enabled = settings.enabledRuntimeIds.isEmpty() || requested in settings.enabledRuntimeIds
         if (!setup.isReady || !enabled) {

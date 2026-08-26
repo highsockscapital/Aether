@@ -4,7 +4,6 @@ import com.highsockscapital.sunshine.data.ActiveSkillContext
 import com.highsockscapital.sunshine.data.SunshineAgentTurnResult
 import com.highsockscapital.sunshine.data.SunshineDiagnosticLogger
 import com.highsockscapital.sunshine.data.SunshineAppExtensionManager
-import com.highsockscapital.sunshine.data.AlpineChromeController
 import com.highsockscapital.sunshine.data.SunshineSelfManagementTool
 import com.highsockscapital.sunshine.data.SunshineToolExecutor
 import com.highsockscapital.sunshine.data.AgentToolEvent
@@ -32,9 +31,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 private const val InjectedMessagePollIntervalMillis = 150L
-private const val SunshineExtensionGuestDirectory = "/root/.sunshine/extensions"
-/** pi global agents directory inside the Alpine guest, used for built-in subagents. */
-const val BuiltInAgentsGuestDirectory = "/root/.pi/agent/agents"
+private val SunshineExtensionGuestDirectory =
+    "${com.highsockscapital.sunshine.termux.TermuxContract.HomeDirectory}/.sunshine/extensions"
+/** pi global agents directory inside the Termux home, used for built-in subagents. */
+val BuiltInAgentsGuestDirectory =
+    "${com.highsockscapital.sunshine.termux.TermuxContract.HomeDirectory}/.pi/agent/agents"
 
 class PiAgentRunner(
     private val bridge: PiKernelBridge,
@@ -42,7 +43,6 @@ class PiAgentRunner(
     private val settingsRepository: SettingsRepository? = null,
     private val piExtensionStateRepository: PiExtensionStateRepository? = null,
     private val appExtensionManager: SunshineAppExtensionManager? = null,
-    private val alpineChromeController: AlpineChromeController? = null,
     private val termuxRuntimeOperations: TermuxRuntimeOperations? = null,
     private val diagnosticLogger: SunshineDiagnosticLogger = SunshineDiagnosticLogger.NoOp,
 ) {
@@ -51,7 +51,7 @@ class PiAgentRunner(
         messages: List<LlmMessage>,
         workspaceDirectory: String,
         termuxWorkspaceDirectory: String,
-        runtimeId: LocalRuntimeId = LocalRuntimeId.Alpine,
+        runtimeId: LocalRuntimeId = LocalRuntimeId.Termux,
         skillPaths: List<String> = emptyList(),
         activeSkills: List<ActiveSkillContext> = emptyList(),
         selfManagementTool: SunshineSelfManagementTool? = null,
@@ -122,8 +122,7 @@ class PiAgentRunner(
                     put("workspace_directory", workspaceDirectory)
                     put("workspace_trusted", true)
                     put("termux_workspace_directory", termuxWorkspaceDirectory)
-                    // Pi extensions are installed in Alpine's guest home even
-                    // when the selected chat runtime is Termux.
+                    // Pi extensions are installed in the Termux home.
                     put("extension_paths", JSONArray().put(SunshineExtensionGuestDirectory))
                     put("runtime", runtimeId.storageValue)
                     put("platform", "android")
@@ -586,28 +585,12 @@ class PiAgentRunner(
         val callId = payload.optString("call_id").trim()
         val args = payload.optJSONObject("args") ?: JSONObject()
         val arguments = args.optJSONObject("arguments") ?: JSONObject()
-        val result = runCatching {
-            alpineChromeController?.execute(arguments.toString())
-                ?: error("Chrome is unavailable on this platform.")
-        }
-        result.fold(
-            onSuccess = { raw ->
-                bridge.sendSunshineHostResult(
-                    callId = callId,
-                    result = runCatching { JSONObject(raw) }.getOrElse {
-                        JSONObject().put("ok", false).put("errmsg", raw)
-                    },
-                )
-            },
-            onFailure = { throwable ->
-                bridge.sendSunshineHostResult(
-                    callId = callId,
-                    result = JSONObject()
-                        .put("ok", false)
-                        .put("code", "setup_required")
-                        .put("errmsg", throwable.message ?: "Chrome is not installed in Alpine."),
-                )
-            },
+        bridge.sendSunshineHostResult(
+            callId = callId,
+            result = JSONObject()
+                .put("ok", false)
+                .put("code", "setup_required")
+                .put("errmsg", "The browser tool requires a Chrome integration which is no longer available."),
         )
     }
 

@@ -1,6 +1,6 @@
 package com.highsockscapital.sunshine.data
 
-import com.highsockscapital.sunshine.runtime.RuntimeRouter
+import com.highsockscapital.sunshine.runtime.TermuxGuestFiles
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.sync.Mutex
@@ -9,7 +9,7 @@ import kotlinx.coroutines.sync.withLock
 private const val RuntimeSkillsRoot = "/data/data/com.termux/files/home/.sunshine/skills"
 
 class SkillRuntimeMirror(
-    private val runtimeRouter: RuntimeRouter,
+    private val guestFiles: TermuxGuestFiles,
 ) {
     private val mutex = Mutex()
     private val runtimeSignatures = mutableMapOf<LocalRuntimeId, String>()
@@ -17,7 +17,7 @@ class SkillRuntimeMirror(
     suspend fun sync(skills: List<InstalledSkill>): List<String> = mutex.withLock {
         val enabled = skills.filter(InstalledSkill::isEnabled).sortedBy(InstalledSkill::id)
         val signature = enabled.joinToString("|") { "${it.id}:${it.checksumSha256}:${it.updatedAtMillis}" }
-        if (runtimeSignatures[LocalRuntimeId.Alpine] == signature) {
+        if (runtimeSignatures[LocalRuntimeId.Termux] == signature) {
             return@withLock enabled.map(::runtimeSkillPath)
         }
         val directories = enabled.associate { skill ->
@@ -25,19 +25,26 @@ class SkillRuntimeMirror(
         }
         if (directories.size != enabled.size) return@withLock emptyList()
 
-        val alpine = runtimeRouter.runtimeById(LocalRuntimeId.Alpine)
-        val alpineReady = runCatching { alpine.inspectSetup().isReady }.getOrDefault(false)
-        if (!alpineReady) return@withLock emptyList()
+        val ready = runCatching { guestFiles.exists(RuntimeSkillsRoot) }.getOrDefault(false)
+        if (!ready) {
+            runCatching { guestFiles.ensureDirectory(RuntimeSkillsRoot) }.getOrNull() ?: return@withLock emptyList()
+        }
         val mirrored = runCatching {
-            alpine.replaceHostDirectories(
-                guestRootPath = RuntimeSkillsRoot,
-                signature = signature,
-                directories = directories,
-            )
-        }.getOrDefault(false)
+            // Remove stale skills first so removed entries disappear.
+            guestFiles.deleteRecursively(RuntimeSkillsRoot)
+            guestFiles.ensureDirectory(RuntimeSkillsRoot)
+            directories.forEach { (directoryName, hostDir) ->
+                val targetRoot = "$RuntimeSkillsRoot/$directoryName"
+                guestFiles.ensureDirectory(targetRoot)
+                hostDir.walkTopDown().filter(File::isFile).forEach { file ->
+                    val relative = file.relativeToOrNull(hostDir)?.invariantSeparatorsPath ?: return@forEach
+                    guestFiles.writeFileBytes("$targetRoot/$relative", file.readBytes())
+                }
+            }
+        }.isSuccess
         if (!mirrored) return@withLock emptyList()
 
-        runtimeSignatures[LocalRuntimeId.Alpine] = signature
+        runtimeSignatures[LocalRuntimeId.Termux] = signature
         enabled.map(::runtimeSkillPath)
     }
 }
