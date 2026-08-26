@@ -87,13 +87,12 @@ class RuntimeRouterTest {
 
     @Test
     fun prefixedRunIdsRouteToOwningRuntimeAndInnerId() {
-        val alpine = router.runtimeForRunId("alpine:run-1")
         val termux = router.runtimeForRunId("termux:abc")
 
-        assertSame(termuxRuntime, alpine?.first)
-        assertEquals("run-1", alpine?.second)
         assertSame(termuxRuntime, termux?.first)
         assertEquals("abc", termux?.second)
+        // Legacy "alpine:" run ids no longer resolve to a runtime.
+        assertNull(router.runtimeForRunId("alpine:run-1"))
         assertNull(router.runtimeForRunId("run-without-prefix"))
     }
 

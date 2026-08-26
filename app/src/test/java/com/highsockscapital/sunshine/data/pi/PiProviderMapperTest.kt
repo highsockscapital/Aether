@@ -23,6 +23,7 @@ class PiProviderMapperTest {
             apiKey = "sk-test",
             baseUrl = "https://openrouter.ai/api/v1",
             modelId = "openai/gpt-5.4",
+            reasoningEffort = "off",
         ).toPiModelConfig()
 
         assertEquals("builtin", config.providerType)
@@ -144,6 +145,7 @@ class PiProviderMapperTest {
                 LlmCustomHeader("User-Agent", "ignored"),
                 LlmCustomHeader(" ", "ignored"),
             ),
+            reasoningEffort = "off",
         ).toPiModelConfig()
 
         assertEquals("custom", config.providerType)
