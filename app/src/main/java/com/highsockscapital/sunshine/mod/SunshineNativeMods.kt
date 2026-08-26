@@ -14,7 +14,7 @@ import com.highsockscapital.sunshine.data.SunshineModServiceHandler
 import com.highsockscapital.sunshine.data.SunshineModServiceMethod
 import com.highsockscapital.sunshine.data.PiExtensionStateRepository
 import com.highsockscapital.sunshine.data.pi.PiKernelBridge
-import com.highsockscapital.sunshine.runtime.AlpineRuntime
+import com.highsockscapital.sunshine.runtime.TermuxGuestFiles
 import com.highsockscapital.sunshine.ui.SunshineUiState
 import dalvik.system.DexClassLoader
 import java.io.File
@@ -334,7 +334,7 @@ internal data class SunshineNativeModManifest(
 class SunshineNativeModManager(
     context: Context,
     private val application: Application,
-    private val alpineRuntime: AlpineRuntime,
+    private val guestFiles: TermuxGuestFiles,
     private val piKernelBridge: PiKernelBridge,
     private val kernel: SunshineModKernel,
     private val piExtensionStateRepository: PiExtensionStateRepository,
@@ -677,9 +677,8 @@ class SunshineNativeModManager(
     ): NativeModDiscovery {
         val loadOptions = piExtensionStateRepository.loadOptions()
         val disabledPaths = loadOptions.disabledExtensionPaths
-        val root = alpineRuntime.resolveManagedGuestPath(
-            SunshineNativeExtensionGuestDirectory
-        )
+        // Native mod packages imported by the user live in app-private storage.
+        val root = File(appContext.filesDir, "native-mods").apply { mkdirs() }
         val manifests = mutableListOf<SunshineNativeModManifest>()
         val failures = mutableListOf<SunshineNativeModFailure>()
         val importedPackageRoots = root
@@ -698,8 +697,9 @@ class SunshineNativeModManager(
                     if (item.optInt("native_entrypoint_count") <= 0) continue
                     val installedPath = item.optString("installed_path").trim()
                     if (installedPath.isBlank()) continue
-                    val packageRoot = alpineRuntime.resolveGuestPath(installedPath)
-                    if (packageRoot.isDirectory) add(packageRoot)
+                    // Pi-installed packages live inside Termux storage which the
+                    // app sandbox cannot read directly; skip them for native loading.
+                    @Suppress("UNUSED_VARIABLE") val skippedPath = installedPath
                 }
             }
         }.onFailure { throwable ->

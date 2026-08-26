@@ -5,7 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter
 import com.highsockscapital.sunshine.data.pi.PiKernelBridge
-import com.highsockscapital.sunshine.runtime.AlpineRuntime
+import com.highsockscapital.sunshine.runtime.TermuxGuestFiles
 import java.io.File
 import java.io.InputStream
 import java.nio.file.Files
@@ -300,7 +300,7 @@ internal fun detectPiPackageCompatibility(
 
 class PiExtensionManager(
     context: Context,
-    private val alpineRuntime: AlpineRuntime,
+    private val guestFiles: TermuxGuestFiles,
     private val piKernelBridge: PiKernelBridge,
     private val skillManager: AgentSkillManager,
     private val stateRepository: PiExtensionStateRepository,
@@ -405,8 +405,8 @@ class PiExtensionManager(
                             for (skillIndex in 0 until skillPaths.length()) {
                                 val guestPath = skillPaths.optString(skillIndex).trim()
                                 if (guestPath.isBlank()) continue
-                                val hostPath = alpineRuntime.resolveGuestPath(guestPath)
-                                if (!hostPath.exists()) continue
+                                val hostPath = cacheTermuxSkillSource(guestPath)
+                                if (hostPath == null || !hostPath.exists()) continue
                                 packageSkills += PiPackageSkillSource(
                                     packageSource = source,
                                     packageName = item.optString("name").ifBlank {
@@ -613,7 +613,7 @@ class PiExtensionManager(
                 }
             }
             if (bundle.root == SunshineExtensionGuestDirectory) {
-                alpineRuntime.clearPreinstalledExtensionRemoved(bundle.name)
+                setPreinstalledExtensionRemoved(bundle.name, removed = false)
             }
         }
         archive.bundles.filterNot(DecodedExtensionBundle::singleFile).forEach { bundle ->
@@ -644,7 +644,7 @@ class PiExtensionManager(
     suspend fun importFromUri(uri: Uri): Result<InstalledPiExtension> = withContext(Dispatchers.IO) {
         runCatching {
             val displayName = queryDisplayName(uri)
-            val importRoot = alpineRuntime.ensureGuestDirectory(SunshineExtensionGuestDirectory)
+            val importRoot = ensureImportedExtensionsRoot(SunshineExtensionGuestDirectory)
             val transaction = if (displayName.endsWith(".zip", ignoreCase = true)) {
                 importZip(uri, displayName, importRoot)
             } else {
@@ -659,7 +659,8 @@ class PiExtensionManager(
                         "The imported source did not contain a loadable Sunshine or Pi extension."
                     )
                 transaction.commit()
-                alpineRuntime.clearPreinstalledExtensionRemoved(transaction.destination.name)
+                setPreinstalledExtensionRemoved(transaction.destination.name, removed = false)
+                syncMirrorToTermux()
                 installed
             } catch (throwable: Throwable) {
                 val rollbackFailure = runCatching {
@@ -679,10 +680,10 @@ class PiExtensionManager(
     }
 
     private fun listImportedExtensions(): List<InstalledPiExtension> {
-        runCatching { alpineRuntime.installPreinstalledExtensionsSync() }
+        runCatching { installPreinstalledExtensionsIntoMirror() }
         val roots = listOf(
-            "sunshine" to alpineRuntime.resolveManagedGuestPath(SunshineExtensionGuestDirectory),
-            "pi" to alpineRuntime.resolveManagedGuestPath(PiUserExtensionGuestDirectory),
+            "sunshine" to ensureImportedExtensionsRoot(SunshineExtensionGuestDirectory),
+            "pi" to ensureImportedExtensionsRoot(PiUserExtensionGuestDirectory),
         )
         return roots.flatMap { (scope, root) ->
             root.listFiles()
@@ -841,12 +842,10 @@ class PiExtensionManager(
         guestDirectory: String,
     ) {
         val plan = npmInstallPlanForPackage(packageRoot) ?: return
-        val result = JSONObject(
-            alpineRuntime.executeCommand(
-                command = plan.command,
-                workingDirectory = guestDirectory,
-                awaitTimeoutMillis = ExtensionDependencyInstallTimeoutMillis,
-            )
+        syncMirrorToTermux()
+        val result = guestFiles.execute(
+            command = plan.command,
+            workingDirectory = guestDirectory,
         )
         require(result.optBoolean("ok")) {
             result.optString("stderr").trim()
@@ -960,8 +959,8 @@ class PiExtensionManager(
     private suspend fun removeImportedExtension(installedPath: String) {
         val target = File(installedPath).canonicalFile
         val allowedRoots = listOf(
-            alpineRuntime.ensureGuestDirectory(SunshineExtensionGuestDirectory).canonicalFile,
-            alpineRuntime.ensureGuestDirectory(PiUserExtensionGuestDirectory).canonicalFile,
+            ensureImportedExtensionsRoot(SunshineExtensionGuestDirectory).canonicalFile,
+            ensureImportedExtensionsRoot(PiUserExtensionGuestDirectory).canonicalFile,
         )
         require(allowedRoots.any { root -> target.parentFile == root }) {
             "Refusing to remove an extension outside a managed import directory."
@@ -969,8 +968,110 @@ class PiExtensionManager(
         require(target.exists()) { "The imported extension no longer exists." }
         require(target.deleteRecursively()) { "Unable to remove the imported extension." }
         if (target.parentFile == allowedRoots.first()) {
-            alpineRuntime.markPreinstalledExtensionRemoved(target.name)
+            markPreinstalledExtensionRemoved(target.name)
+            syncMirrorToTermux()
         }
+    }
+
+    // ---- Termux-backed extension storage ------------------------------------
+    //
+    // Imported extensions are staged in app-private storage (readable with the
+    // java.io File API for zip handling and manifest parsing) and mirrored into
+    // the Termux home so the pi agent core can load them.
+
+    private val mirrorRoot: File
+        get() = File(appContext.filesDir, "extension-mirror")
+
+    private val preinstalledPreferences by lazy {
+        appContext.getSharedPreferences("sunshine_preinstalled_extensions", Context.MODE_PRIVATE)
+    }
+
+    private fun mirrorDirFor(guestRoot: String): File = when (guestRoot) {
+        SunshineExtensionGuestDirectory -> File(mirrorRoot, "sunshine")
+        PiUserExtensionGuestDirectory -> File(mirrorRoot, "pi")
+        else -> File(mirrorRoot, Integer.toHexString(guestRoot.hashCode()))
+    }
+
+    private fun ensureImportedExtensionsRoot(guestRoot: String): File =
+        mirrorDirFor(guestRoot).apply { mkdirs() }
+
+    private fun markPreinstalledExtensionRemoved(name: String) {
+        preinstalledPreferences.edit().putBoolean("removed_$name", true).apply()
+    }
+
+    private fun setPreinstalledExtensionRemoved(name: String, removed: Boolean) {
+        preinstalledPreferences.edit().putBoolean("removed_$name", removed).apply()
+    }
+
+    private fun installPreinstalledExtensionsIntoMirror() {
+        val target = ensureImportedExtensionsRoot(SunshineExtensionGuestDirectory)
+        val assets = runCatching {
+            appContext.assets.list("preinstalledExtensions/extensions").orEmpty()
+        }.getOrDefault(emptyList())
+        if (assets.isEmpty()) return
+        for (name in assets) {
+            if (preinstalledPreferences.getBoolean("removed_$name", false)) continue
+            val destination = File(target, name)
+            if (destination.exists()) continue
+            runCatching {
+                copyAssetDirRecursively("preinstalledExtensions/extensions/$name", destination)
+            }
+        }
+    }
+
+    private fun copyAssetDirRecursively(assetPath: String, destination: File) {
+        destination.mkdirs()
+        val children = appContext.assets.list(assetPath).orEmpty()
+        if (children.isEmpty()) {
+            appContext.assets.open(assetPath).use { input ->
+                destination.outputStream().use { output -> input.copyTo(output) }
+            }
+            return
+        }
+        for (child in children) {
+            copyAssetDirRecursively("$assetPath/$child", File(destination, child))
+        }
+    }
+
+    /** Pushes the app-private extension mirror into the Termux home. */
+    private suspend fun syncMirrorToTermux() {
+        val roots = listOf(
+            SunshineExtensionGuestDirectory to ensureImportedExtensionsRoot(SunshineExtensionGuestDirectory),
+            PiUserExtensionGuestDirectory to ensureImportedExtensionsRoot(PiUserExtensionGuestDirectory),
+        )
+        for ((guestRoot, hostRoot) in roots) {
+            runCatching {
+                guestFiles.deleteRecursively(guestRoot)
+                guestFiles.ensureDirectory(guestRoot)
+                uploadDirectory(hostRoot, guestRoot)
+            }.onFailure { throwable ->
+                diagnosticLoggerSafe(throwable)
+            }
+        }
+    }
+
+    private suspend fun uploadDirectory(hostRoot: File, guestRoot: String) {
+        val files = hostRoot.walkTopDown().filter { it.isFile }.toList()
+        for (file in files) {
+            val relative = file.relativeToOrNull(hostRoot)?.invariantSeparatorsPath ?: continue
+            guestFiles.writeFileBytes("$guestRoot/$relative", file.readBytes())
+        }
+    }
+
+    private fun diagnosticLoggerSafe(throwable: Throwable) {
+        android.util.Log.w("PiExtensionManager", "Failed to sync extensions to Termux", throwable)
+    }
+
+    /** Copies a single skill source file from Termux storage into app-private cache. */
+    private suspend fun cacheTermuxSkillSource(guestPath: String): File? {
+        return runCatching {
+            if (!guestFiles.exists(guestPath)) return null
+            val safeName = guestPath.trim('/').replace('/', '_')
+            val cacheFile = File(File(appContext.cacheDir, "termux-skills"), safeName)
+            cacheFile.parentFile?.mkdirs()
+            cacheFile.writeBytes(guestFiles.readFileBytes(guestPath))
+            cacheFile
+        }.getOrNull()
     }
 
     private fun queryDisplayName(uri: Uri): String {
@@ -991,8 +1092,8 @@ class PiExtensionManager(
     }
 
     private suspend fun extensionArchiveRoots(): List<Pair<String, File>> = listOf(
-        SunshineExtensionGuestDirectory to alpineRuntime.ensureGuestDirectory(SunshineExtensionGuestDirectory).canonicalFile,
-        PiUserExtensionGuestDirectory to alpineRuntime.ensureGuestDirectory(PiUserExtensionGuestDirectory).canonicalFile,
+        SunshineExtensionGuestDirectory to ensureImportedExtensionsRoot(SunshineExtensionGuestDirectory).canonicalFile,
+        PiUserExtensionGuestDirectory to ensureImportedExtensionsRoot(PiUserExtensionGuestDirectory).canonicalFile,
     )
 }
 
