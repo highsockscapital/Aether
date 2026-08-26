@@ -1760,10 +1760,14 @@ class SunshineViewModel(
             if (current.currentSessionId == DraftSessionId) {
                 current.copy(draftSelectedModelKey = defaultModelKey)
             } else {
-                sessionToPersist = current.currentSessionId to defaultModelKey
+                // Respect a model the user explicitly picked for this session;
+                // only fall back to the default when none was stored.
                 current.copy(
                     sessions = current.sessions.map { session ->
-                        if (session.id == current.currentSessionId) {
+                        if (session.id == current.currentSessionId &&
+                            session.selectedModelKey.isBlank()
+                        ) {
+                            sessionToPersist = session.id to defaultModelKey
                             session.copy(selectedModelKey = defaultModelKey)
                         } else {
                             session
@@ -2716,6 +2720,17 @@ class SunshineViewModel(
                     null
                 } else {
                     session.copy(selectedModelKey = modelKey)
+                }
+            }
+        }
+        if (didUpdate) {
+            // Persist the choice as the default so it survives app restarts
+            // for new chats and drafts as well.
+            viewModelScope.launch {
+                withContext(NonCancellable) {
+                    settingsRepository.updateSettings { stored ->
+                        stored.copy(defaultChatModelKey = modelKey)
+                    }
                 }
             }
         }

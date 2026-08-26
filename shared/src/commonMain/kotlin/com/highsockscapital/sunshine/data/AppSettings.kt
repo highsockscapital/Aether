@@ -202,7 +202,7 @@ data class TermuxEnvironmentVariable(
 )
 
 const val CurrentOnboardingVersion = 1
-const val DefaultReasoningEffort = "off"
+const val DefaultReasoningEffort = "high"
 val SupportedReasoningEfforts: List<String> = listOf(
     "off",
     "minimal",
