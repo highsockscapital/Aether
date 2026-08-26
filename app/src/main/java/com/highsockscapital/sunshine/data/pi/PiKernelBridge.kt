@@ -865,7 +865,7 @@ class PiKernelBridge(
                 "rm -f ${q("bridge.log")} ${q("bridge.in")} ${q("bridge.exit")} ${q("node.pid")} ${q("stdout.offset")}",
                 "mkfifo ${q("bridge.in")} || exit 1",
                 "( echo $$ > ${q("holder.pid")}; exec sleep infinity ) > ${q("bridge.in")} 2>/dev/null &",
-                "nohup node ${q(PiBridgeGuestPath)} < ${q("bridge.in")} >> ${q("bridge.log")} 2>&1 &",
+                "nohup node ${TermuxGuestFiles.shellQuote(PiBridgeGuestPath)} < ${q("bridge.in")} >> ${q("bridge.log")} 2>&1 &",
                 "echo $! > ${q("node.pid")}",
                 "echo BRIDGE_LAUNCHED",
             ).joinToString(separator = "\n"),
