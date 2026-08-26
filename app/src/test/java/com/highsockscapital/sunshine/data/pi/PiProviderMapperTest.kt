@@ -163,6 +163,7 @@ class PiProviderMapperTest {
         assertEquals("off", AppSettings(
             piProviderId = "openai-compatible",
             modelId = "custom-model",
+            reasoningEffort = "off",
         ).toPiThinkingLevel())
         assertEquals(
             SunshineLlmUserAgent,
