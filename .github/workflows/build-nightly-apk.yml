@@ -71,24 +71,25 @@ jobs:
           fi
         id: keystore
 
-      - name: Build APK (clean)
+      - name: Build APKs (clean) — nightly + debug
         env:
           NIGHTLY_KEYSTORE_FILE: ${{ steps.keystore.outputs.has_keystore == 'true' && format('{0}/sunshine-signing/sunshine-nightly.jks', runner.temp) || '' }}
           NIGHTLY_KEYSTORE_PASSWORD: ${{ secrets.NIGHTLY_KEYSTORE_PASSWORD }}
           NIGHTLY_KEY_ALIAS: ${{ secrets.NIGHTLY_KEY_ALIAS }}
           NIGHTLY_KEY_PASSWORD: ${{ secrets.NIGHTLY_KEY_PASSWORD }}
           VERSION_NAME: ${{ steps.meta.outputs.version_name }}
-        run: ./gradlew clean :app:assembleNightly --stacktrace -Psunshine.versionName="$VERSION_NAME"
+        run: ./gradlew clean :app:assembleNightly :app:assembleDebug --stacktrace -Psunshine.versionName="$VERSION_NAME"
 
-      - name: Rename APK to sunshine.apk
+      - name: Rename APKs to sunshine
         shell: bash
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/nightly/app-nightly.apk dist/sunshine.apk
-          ls -lh dist/sunshine.apk
+          cp app/build/outputs/apk/nightly/app-nightly.apk dist/sunshine-nightly.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/sunshine.apk
+          ls -lh dist/*.apk
 
-      - name: Upload APK artifact
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v7
         with:
           name: sunshine
-          path: dist/sunshine.apk
+          path: dist/*.apk
