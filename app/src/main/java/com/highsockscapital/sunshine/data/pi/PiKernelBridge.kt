@@ -885,19 +885,40 @@ class PiKernelBridge(
 
     private suspend fun writeLine(process: TermuxBridgeProcess, line: String) {
         writerMutex.withLock {
-            val result = guestFiles.execute(
-                command = "printf '%s\\n' ${shellQuote(line)} > ${shellQuote(PiBridgeFifoPath)}",
-                workingDirectory = PiBridgeWorkingDirectory,
-            )
-            if (!result.optBoolean("ok")) {
+            // Large payloads (e.g., 5MB image → ~6.7MB base64 + JSON → ~7.5MB) exceed
+            // Android's ARG_MAX (~128KB) and Binder 1MB limit when sent as a single
+            // shell-quoted argument to `printf`. Stream via a temp file in chunks
+            // (like TermuxGuestFiles.writeFileBytes) to avoid TransactionTooLarge.
+            val payloadBytes = (line + "\n").toByteArray(Charsets.UTF_8)
+            val tempPath = "$PiBridgeWorkingDirectory/bridge.in.tmp"
+            try {
+                guestFiles.writeFileBytes(tempPath, payloadBytes)
+                val result = guestFiles.execute(
+                    command = "cat ${shellQuote(tempPath)} > ${shellQuote(PiBridgeFifoPath)} && rm -f ${shellQuote(tempPath)}",
+                    workingDirectory = PiBridgeWorkingDirectory,
+                )
+                if (!result.optBoolean("ok")) {
+                    failPendingRequests(
+                        exitedProcess = process,
+                        message = result.optString("stderr").ifBlank {
+                            "Couldn't send the request to the agent runtime."
+                        },
+                    )
+                    throw PiBridgeException(
+                        result.optString("stderr").ifBlank { "Couldn't reach the agent runtime." },
+                        code = "bridge_write_failed",
+                    )
+                }
+            } catch (e: Throwable) {
+                // Ensure temp is cleaned even on writeFileBytes failure
+                runCatching { guestFiles.execute("rm -f ${shellQuote(tempPath)}", PiBridgeWorkingDirectory) }
+                if (e is PiBridgeException) throw e
                 failPendingRequests(
                     exitedProcess = process,
-                    message = result.optString("stderr").ifBlank {
-                        "Couldn't send the request to the agent runtime."
-                    },
+                    message = (e.message ?: "").ifBlank { "Couldn't send the request to the agent runtime." },
                 )
                 throw PiBridgeException(
-                    result.optString("stderr").ifBlank { "Couldn't reach the agent runtime." },
+                    (e.message ?: "").ifBlank { "Couldn't reach the agent runtime." },
                     code = "bridge_write_failed",
                 )
             }
