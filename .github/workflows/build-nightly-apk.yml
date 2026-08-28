@@ -1,4 +1,4 @@
-name: Build Nightly APK
+name: Build APK
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ on:
       - '.github/workflows/build-nightly-apk.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -48,15 +48,15 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x ./gradlew
 
-      - name: Prepare Nightly Metadata
-        id: nightly
+      - name: Prepare Build Metadata
+        id: meta
         shell: bash
         run: |
           short_sha="${GITHUB_SHA::12}"
           echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
-          echo "version_name=Nightly $short_sha" >> "$GITHUB_OUTPUT"
+          echo "version_name=$short_sha" >> "$GITHUB_OUTPUT"
 
-      - name: Restore Nightly Signing Key
+      - name: Restore Signing Key
         shell: bash
         env:
           NIGHTLY_KEYSTORE_BASE64: ${{ secrets.NIGHTLY_KEYSTORE_BASE64 }}
@@ -67,29 +67,37 @@ jobs:
             echo "has_keystore=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_keystore=false" >> "$GITHUB_OUTPUT"
-            echo "No nightly keystore secret found, falling back to debug signing."
+            echo "No signing keystore secret found, falling back to debug signing."
           fi
         id: keystore
 
-      - name: Build Nightly APK
+      - name: Build APK
         env:
           NIGHTLY_KEYSTORE_FILE: ${{ steps.keystore.outputs.has_keystore == 'true' && format('{0}/sunshine-signing/sunshine-nightly.jks', runner.temp) || '' }}
           NIGHTLY_KEYSTORE_PASSWORD: ${{ secrets.NIGHTLY_KEYSTORE_PASSWORD }}
           NIGHTLY_KEY_ALIAS: ${{ secrets.NIGHTLY_KEY_ALIAS }}
           NIGHTLY_KEY_PASSWORD: ${{ secrets.NIGHTLY_KEY_PASSWORD }}
-          VERSION_NAME: ${{ steps.nightly.outputs.version_name }}
+          VERSION_NAME: ${{ steps.meta.outputs.version_name }}
         run: ./gradlew :app:assembleNightly --stacktrace -Psunshine.versionName="$VERSION_NAME"
 
-      - name: Rename Nightly APK
+      - name: Rename APK to sunshine.apk
         shell: bash
-        env:
-          SHORT_SHA: ${{ steps.nightly.outputs.short_sha }}
         run: |
-          mkdir -p dist/nightly
-          cp app/build/outputs/apk/nightly/app-nightly.apk "dist/nightly/Sunshine-nightly-${SHORT_SHA}.apk"
+          mkdir -p dist
+          cp app/build/outputs/apk/nightly/app-nightly.apk dist/sunshine.apk
+          ls -lh dist/sunshine.apk
 
-      - name: Upload Nightly APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: Sunshine-nightly
-          path: dist/nightly/*.apk
+          name: sunshine
+          path: dist/sunshine.apk
+
+      - name: Publish to GitHub Release (latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Sunshine latest
+          body: "Automated build from ${{ steps.meta.outputs.short_sha }} — ${{ github.sha }}"
+          files: dist/sunshine.apk
+          fail_on_unmatched_files: true
