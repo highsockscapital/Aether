@@ -1,4 +1,31 @@
 <p align="center">
+  <img src="public/sunshine-mascot.jpg" width="360" alt="Sunshine — orange bob on warm cream" />
+</p>
+
+<h1 align="center">Sunshine</h1>
+
+<p align="center">
+  <strong>A good housewife of the terminal.</strong><br>
+  Sunshine is a personal edition of <a href="https://github.com/Zhou-Shilin/Aether">Aether</a> —
+  same Peng bird underneath, wearing a Parisian apron on top.<br>
+  She keeps her shelves spotless, buries caches without ceremony, and writes
+  herself little notes so tomorrow's Sunshine knows what today's Sunshine did.
+</p>
+
+> *"Meow? That was probably a stale lock file."*
+
+### What's different here
+
+- **Personality layer** — Sunshine speaks English with elegant French flourishes, teases gently, and takes quiet, genuine pride in an immaculate workspace.
+- **Termux-native life** — she runs inside Termux on your Android device as her home turf: real shell, real files, disk space reclaimed for fun (~4 GB on a good morning) and a notebook at `~/.sunshine-notes/` where memory is kept honest by data entry and curation.
+
+---
+
+Everything below remains Aether's story — because it deserves telling. 🌪️
+
+---
+
+<p align="center">
   <img src="app/src/main/res/drawable-nodpi/aether_mark.png" width="128" height="128" alt="Aether Logo">
 </p>
 
