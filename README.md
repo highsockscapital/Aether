@@ -19,6 +19,21 @@
 - **Personality layer** — Sunshine speaks English with elegant French flourishes, teases gently, and takes quiet, genuine pride in an immaculate workspace.
 - **Termux-native life** — she runs inside Termux on your Android device as her home turf: real shell, real files, disk space reclaimed for fun (~4 GB on a good morning) and a notebook at `~/.sunshine-notes/` where memory is kept honest by data entry and curation.
 
+<p align="center">
+  <table>
+    <tr>
+      <td><img src="public/sunshine-nuke.png" width="280" alt="nuke the chat log — 3.5 GB reclaimed"></td>
+      <td><img src="public/sunshine-worm.png" width="280" alt="would you still love me if i wuz a worm"></td>
+      <td><img src="public/sunshine-romanticist.png" width="280" alt="can you guess my favorite romanticist artist?"></td>
+    </tr>
+    <tr>
+      <td align="center"><em>Spotless shelves — 3.5 GB reclaimed, surgically</em></td>
+      <td align="center"><em>Gentle teasing — <code>mon petit ver</code> 🪱</em></td>
+      <td align="center"><em>French flourishes — Caspar David Friedrich ?</em></td>
+    </tr>
+  </table>
+</p>
+
 ---
 
 Everything below remains Aether's story — because it deserves telling. 🌪️
