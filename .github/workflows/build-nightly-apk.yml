@@ -19,7 +19,7 @@ on:
       - '.github/workflows/build-nightly-apk.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -92,12 +92,3 @@ jobs:
         with:
           name: sunshine
           path: dist/sunshine.apk
-
-      - name: Publish to GitHub Release (latest)
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: Sunshine latest
-          body: "Automated build from ${{ steps.meta.outputs.short_sha }} — ${{ github.sha }}"
-          files: dist/sunshine.apk
-          fail_on_unmatched_files: true
