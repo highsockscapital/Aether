@@ -46,6 +46,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
@@ -79,6 +80,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
+import com.highsockscapital.sunshine.data.AppThemeMode
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -132,12 +136,12 @@ import com.highsockscapital.sunshine.platform.LocalReduceMotion
 import com.highsockscapital.sunshine.mod.SunshineNativeModState
 import com.highsockscapital.sunshine.runtime.LocalRuntimeIssue
 import com.highsockscapital.sunshine.runtime.LocalRuntimeSetupState
-import com.highsockscapital.sunshine.runtime.AndroidAlpineFileManagerRuntime
 import com.highsockscapital.sunshine.termux.TermuxContract
 import com.highsockscapital.sunshine.termux.TermuxSetupIssue
 import com.highsockscapital.sunshine.termux.TermuxSetupState
 import com.highsockscapital.sunshine.ui.theme.SunshineBackground
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
+import com.highsockscapital.sunshine.ui.theme.SunshineOutline
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
 import com.highsockscapital.sunshine.ui.theme.SunshinePrimary
 import com.highsockscapital.sunshine.ui.theme.SunshineScrim
@@ -275,8 +279,7 @@ fun SunshineApp(
         }
     }
 
-    LaunchedEffect(extensionManager, extensionContext.toString(), uiState.alpineSetupState.isReady) {
-        if (!uiState.alpineSetupState.isReady) return@LaunchedEffect
+    LaunchedEffect(extensionManager, extensionContext.toString()) {
         extensionManager.start(extensionContext)
         extensionManager.updateContext(extensionContext)
     }
@@ -298,6 +301,39 @@ fun SunshineApp(
         if (uiState.currentScreen == AppScreen.Settings) {
             viewModel.refreshUsageStatisticsSnapshots()
         }
+    }
+
+    // Status bar matches the window background: dark icons on the cream
+    // light theme, light icons in dark theme.
+    val darkTheme = uiState.settings.themeMode == AppThemeMode.Dark ||
+        (
+            uiState.settings.themeMode == AppThemeMode.System &&
+                (
+                    LocalContext.current.resources.configuration.uiMode and
+                        android.content.res.Configuration.UI_MODE_NIGHT_MASK
+                    ) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            )
+    val activityContext = run {
+        var ctx = LocalContext.current
+        while (
+            ctx is android.content.ContextWrapper &&
+            ctx !is androidx.activity.ComponentActivity
+        ) {
+            ctx = ctx.baseContext
+        }
+        ctx as? androidx.activity.ComponentActivity
+    }
+    DisposableEffect(darkTheme) {
+        val style = if (darkTheme) {
+            SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        } else {
+            SystemBarStyle.light(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT,
+            )
+        }
+        activityContext?.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+        onDispose { }
     }
 
     CompositionLocalProvider(
@@ -445,9 +481,6 @@ private fun SunshineAppContent(
         (context.applicationContext as SunshineApplication).runtime
     }
     val workspaceFileBridge = appRuntime.workspaceFileBridge
-    val alpineFileManagerRuntime = remember(appRuntime.alpineRuntime) {
-        AndroidAlpineFileManagerRuntime(appRuntime.alpineRuntime)
-    }
     val runtimeWorkspaceFileBridge = appRuntime.runtimeWorkspaceFileBridge
     val activeSession = uiState.sessions.firstOrNull { it.id == uiState.currentSessionId }
     val activeProviderConfig = uiState.providerConfigs.firstOrNull { it.isEnabled }
@@ -477,9 +510,8 @@ private fun SunshineAppContent(
         effectiveTermuxSetupState.isReady &&
         uiState.agentModeAuthorizationState.isReady
     val agentModeSelected = activeSession?.agentModeEnabled ?: uiState.draftAgentModeEnabled
-    val chromeAvailable = uiState.alpineSetupState.isReady &&
-        uiState.settings.alpinePackageProfiles["chrome"]?.installed == true
-    val chromeSelected = activeSession?.chromeEnabled ?: uiState.draftChromeEnabled
+    val chromeAvailable = false
+    val chromeSelected = false
     val conversationModelOptions = remember(uiState.providerConfigs) {
         uiState.providerConfigs.availableModelOptions()
     }
@@ -847,21 +879,12 @@ private fun SunshineAppContent(
                     AppScreen.Onboarding -> OnboardingScreen(
                         initialStep = uiState.onboardingStep,
                         replayMode = uiState.isOnboardingReplay,
-                        setupPreviewMode = uiState.developerAlpineSetupPreviewState != null,
+                        setupPreviewMode = false,
                         existingProviderConfig = activeProviderConfig,
                         isFetchingModels = uiState.isFetchingModels,
                         providerAuthState = uiState.providerAuthState,
-                        piCoreSetupState = uiState.developerAlpineSetupPreviewState
-                            ?: uiState.piCoreSetupState,
+                        piCoreSetupState = uiState.piCoreSetupState,
                         termuxSetupState = effectiveTermuxSetupState,
-                        alpineSetupState = if (uiState.developerAlpineSetupPreviewState != null) {
-                            LocalRuntimeSetupState(
-                                runtimeId = LocalRuntimeId.Alpine,
-                                issue = LocalRuntimeIssue.Ready,
-                            )
-                        } else {
-                            uiState.alpineSetupState
-                        },
                         rootSetupState = uiState.rootSetupState,
                         agentModeAuthorizationMethod = uiState.settings.agentModeAuthorizationMethod,
                         tavilyApiKey = uiState.settings.tavilyApiKey,
@@ -887,27 +910,6 @@ private fun SunshineAppContent(
                             startTermuxSetupAction("onboarding_install_termux") { openTermuxInstallPage(context) }
                         },
                         onRefreshTermuxSetup = viewModel::refreshTermuxSetup,
-                        onInitializeAlpineRuntime = {
-                            if (uiState.developerAlpineSetupPreviewState != null) {
-                                viewModel.restartDeveloperAlpineSetupPreview()
-                            } else {
-                                viewModel.initializeAlpineRuntime(makeDefault = true)
-                            }
-                        },
-                        onRetryAlpineSetup = {
-                            if (uiState.developerAlpineSetupPreviewState != null) {
-                                viewModel.restartDeveloperAlpineSetupPreview()
-                            } else {
-                                viewModel.retryAlpineRuntimeSetup(makeDefault = true)
-                            }
-                        },
-                        onRefreshAlpineSetup = {
-                            if (uiState.developerAlpineSetupPreviewState != null) {
-                                viewModel.restartDeveloperAlpineSetupPreview()
-                            } else {
-                                viewModel.refreshAlpineSetup(startPiIfReady = true)
-                            }
-                        },
                         onRefreshRootSetup = viewModel::refreshRootSetup,
                         onConfigureWithRoot = {
                             runRootSetupAfterTermuxPermission(
@@ -1087,12 +1089,8 @@ private fun SunshineAppContent(
                     usageStatisticsSnapshots = uiState.usageStatisticsSnapshots,
                     scheduledTasks = uiState.scheduledTasks,
                     termuxSetupState = effectiveTermuxSetupState,
-                    alpineSetupState = uiState.alpineSetupState,
                     enabledRuntimeIds = uiState.settings.enabledRuntimeIds,
                     defaultRuntimeId = uiState.settings.defaultRuntimeId,
-                    alpinePackageProfiles = uiState.settings.alpinePackageProfiles,
-                    alpinePackageInstallProgress = uiState.alpinePackageInstallProgress,
-                    alpineFileManagerRuntime = alpineFileManagerRuntime,
                     developerTermuxReadyOverride = uiState.developerTermuxReadyOverride,
                     installedSkills = uiState.installedSkills,
                     installedPiExtensions = uiState.installedPiExtensions,
@@ -1188,13 +1186,6 @@ private fun SunshineAppContent(
                         startTermuxSetupAction("settings_install_termux") { openTermuxInstallPage(context) }
                     },
                     onRefreshTermuxSetup = viewModel::refreshTermuxSetup,
-                    onInitializeAlpineRuntime = { viewModel.initializeAlpineRuntime(makeDefault = false) },
-                    onResetAlpineRuntime = viewModel::resetAlpineRuntime,
-                    onRefreshAlpineSetup = { viewModel.refreshAlpineSetup(startPiIfReady = true) },
-                    onInstallAlpinePackageProfile = viewModel::installAlpinePackageProfile,
-                    onCreateAlpineTerminalLaunchSpec = viewModel::createAlpineTerminalLaunchSpec,
-                    onStartAlpineChrome = viewModel::startAlpineChrome,
-                    onShouldShowAlpineChromeKeyboard = viewModel::shouldShowAlpineChromeKeyboard,
                     onSetDefaultRuntime = viewModel::setDefaultRuntime,
                     onRefreshRootSetup = viewModel::refreshRootSetup,
                     onStartRootSetupFromSettings = { returnPage ->
@@ -1210,7 +1201,6 @@ private fun SunshineAppContent(
                     onInstallShizuku = { openShizukuInstallPage(context) },
                     onReplayOnboarding = viewModel::openOnboardingFromSettings,
                     onReplayFollowUpOnboarding = viewModel::openFollowUpOnboardingFromSettings,
-                    onReplayAlpineSetupPreview = viewModel::openDeveloperAlpineSetupPreview,
                     onStopAgentModeDisplay = viewModel::stopAgentModeDisplay,
                     onRefreshAgentModeDisplays = viewModel::refreshAgentModeDisplays,
                     onOpenWebsite = { openExternalUrl(context, SunshineWebsiteUrl) },
@@ -1692,11 +1682,7 @@ private fun ChatScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(SunshineBackground, Color(0xFF0B0B0D), Color(0xFF070708))
-                    )
-                )
+                .background(SunshineBackground)
                 .padding(innerPadding)
         ) {
             if (messages.isEmpty()) {
@@ -1823,11 +1809,11 @@ private fun MessageBubble(message: ChatMessage) {
                 modifier = Modifier
                     .clip(RoundedCornerShape(22.dp))
                     .background(
-                        Brush.horizontalGradient(listOf(Color(0xFF5B36D7), Color(0xFF6E48FF)))
+                        Brush.horizontalGradient(listOf(Color(0xFFFF9E43), Color(0xFFFFB866)))
                     )
                     .padding(horizontal = 18.dp, vertical = 14.dp),
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White,
+                color = Color(0xFF3D2400),
             )
         }
     } else {
@@ -2118,7 +2104,7 @@ private fun SurfaceIconButton(
     Box(
         modifier = Modifier
             .size(44.dp)
-            .shadow(12.dp, CircleShape, ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, CircleShape)
             .clip(CircleShape)
             .background(SunshineSurface.copy(alpha = 0.88f))
             .clickable(onClick = onClick),

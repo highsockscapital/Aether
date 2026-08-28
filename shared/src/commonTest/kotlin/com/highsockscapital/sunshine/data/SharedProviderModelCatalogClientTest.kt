@@ -56,17 +56,12 @@ class SharedProviderModelCatalogClientTest {
     }
 
     @Test
-    fun modelsDevProviderAliasesMatchSunshineBuiltIns() {
+    fun modelsDevProviderIdsUseProviderIdentity() {
         assertEquals(
-            listOf("togetherai"),
-            PiProviderCatalog.resolve("together").modelsDevProviderIds(),
-        )
-        assertEquals(
-            listOf("kimi-for-coding"),
-            PiProviderCatalog.resolve("kimi-coding").modelsDevProviderIds(),
+            listOf("openrouter"),
+            PiProviderCatalog.resolve("openrouter").modelsDevProviderIds(),
         )
     }
-
     @Test
     fun modelEndpointFollowsConfiguredBaseUrl() {
         assertEquals("https://example.com/v1/models", modelsEndpoint("https://example.com/v1/responses"))
@@ -104,9 +99,9 @@ class SharedProviderModelCatalogClientTest {
         val engine = MockEngine { request ->
             requestedHosts += request.url.host
             when (request.url.host) {
-                "api.anthropic.com" -> respondError(HttpStatusCode.Unauthorized)
+                "openrouter.ai" -> respondError(HttpStatusCode.Unauthorized)
                 "models.dev" -> respond(
-                    """{"providers":{"anthropic":{"models":{"claude-fallback":{"id":"claude-fallback"}}}}}""",
+                    """{"providers":{"openrouter":{"models":{"router-fallback":{"id":"router-fallback"}}}}}""",
                     headers = headersOf(HttpHeaders.ContentType, "application/json"),
                 )
                 else -> respondError(HttpStatusCode.NotFound)
@@ -115,14 +110,14 @@ class SharedProviderModelCatalogClientTest {
 
         val result = SharedProviderModelCatalogClient(engine).fetchModels(
             customConfig(
-                piProviderId = "anthropic",
-                baseUrl = "https://api.anthropic.com",
-                authMethod = ProviderAuthMethod.OAuth,
+                piProviderId = "openrouter",
+                baseUrl = "https://openrouter.ai/api/v1",
+                authMethod = ProviderAuthMethod.ApiKey,
             ),
         )
 
-        assertEquals(listOf("api.anthropic.com", "models.dev"), requestedHosts)
-        assertEquals(listOf("claude-fallback"), result.models)
+        assertEquals(listOf("openrouter.ai", "models.dev"), requestedHosts)
+        assertEquals(listOf("router-fallback"), result.models)
         assertNull(result.error)
     }
 

@@ -540,7 +540,7 @@ class McpClientManager(
                 environment = transportConfig.runtimeEnvironment?.storageValue,
             ) ?: error(
                 "No local runtime is configured for stdio MCP server '${server.displayName}'. " +
-                    "Configure Alpine or Termux in Settings, or choose a runtime in this MCP server's stdio settings."
+                    "Configure Termux in Settings, or choose a runtime in this MCP server's stdio settings."
             ),
         )
 

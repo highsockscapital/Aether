@@ -26,7 +26,7 @@
     <string name="shared_extensions_import_too_large">所选 Extension 文件超过 32 MB。</string>
     <string name="shared_extensions_zip_unsafe">Extension 压缩包包含不安全的路径。</string>
     <string name="shared_extensions_zip_invalid">压缩包必须包含脚本 Extension package，或 index JavaScript/TypeScript 文件。</string>
-    <string name="shared_extensions_platform_compatibility">该 package 似乎需要桌面操作系统或特定 CPU 架构，Sunshine 的 iOS Alpine 运行环境可能无法满足。</string>
+    <string name="shared_extensions_platform_compatibility">该 package 似乎需要桌面操作系统或特定 CPU 架构，Sunshine 的 iOS 运行环境可能无法满足。</string>
     <string name="shared_extensions_operation_in_progress">正在应用 Extension 更改…</string>
     <string name="shared_extensions_refresh_complete">Extension 已刷新。</string>
 </resources>

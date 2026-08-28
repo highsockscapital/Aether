@@ -3,7 +3,11 @@ package com.highsockscapital.sunshine.data.pi
 import com.highsockscapital.sunshine.data.PiExtensionLoadOptions
 import com.highsockscapital.sunshine.data.SunshineDiagnosticLogger
 import com.highsockscapital.sunshine.data.DiagnosticRedactor
-import com.highsockscapital.sunshine.runtime.AlpineRuntime
+import com.highsockscapital.sunshine.runtime.TermuxGuestFiles
+import com.highsockscapital.sunshine.termux.TermuxBashTool
+import com.highsockscapital.sunshine.termux.TermuxContract
+import android.content.Context
+import kotlinx.coroutines.delay
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -20,17 +24,20 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.BufferedWriter
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 private const val PiBridgeAssetPath = "pi-bridge/bridge.mjs"
-private const val PiBridgeGuestPath = "/root/.sunshine/pi-bridge/bridge.mjs"
-private const val PiBridgeWorkingDirectory = "/root/.sunshine/pi-bridge"
+private val PiBridgeGuestPath = "${TermuxContract.HomeDirectory}/.sunshine/pi-bridge/bridge.mjs"
+private val PiBridgeWorkingDirectory = "${TermuxContract.HomeDirectory}/.sunshine/pi-bridge"
+private val PiBridgeHomeDirectory = TermuxContract.HomeDirectory
+private val PiBridgeLogPath = "$PiBridgeWorkingDirectory/bridge.log"
+private val PiBridgeFifoPath = "$PiBridgeWorkingDirectory/bridge.in"
+private val PiBridgeExitCodePath = "$PiBridgeWorkingDirectory/bridge.exit"
+private val PiBridgeNodePidPath = "$PiBridgeWorkingDirectory/node.pid"
+private val PiBridgeVersionMarkerPath = "$PiBridgeWorkingDirectory/bridge.version"
+private val PiBridgeStdoutOffsetPath = "$PiBridgeWorkingDirectory/stdout.offset"
 private const val PiBridgeNodeMinVersion = "22.19.0"
 private const val PiBridgeVersion = "2.0.0-alpha.0"
 private const val PiAiVersion = "0.84.1"
@@ -48,16 +55,24 @@ private data class PendingPiBridgeRequest(
     val eventJob: Job? = null,
 )
 
-private data class ActivePiBridgeProcess(
-    val process: Process,
-    val writer: BufferedWriter,
+private class TermuxBridgeProcess(
+    val runId: String,
     val generation: Long,
-)
+) {
+    @Volatile
+    var exited: Boolean = false
+
+    @Volatile
+    var exitCode: Int? = null
+}
 
 class PiKernelBridge(
-    private val alpineRuntime: AlpineRuntime,
+    context: Context,
+    private val bashTool: TermuxBashTool,
     private val diagnosticLogger: SunshineDiagnosticLogger = SunshineDiagnosticLogger.NoOp,
 ) {
+    private val guestFiles = TermuxGuestFiles(context.applicationContext, bashTool)
+    private val writerMutex = Mutex()
     private val mutex = Mutex()
     private val pendingRequests = ConcurrentHashMap<String, PendingPiBridgeRequest>()
     private val cancelledRequestIds = ConcurrentHashMap<String, Long>()
@@ -65,7 +80,7 @@ class PiKernelBridge(
     private val processStateLock = Any()
     private val nextProcessGeneration = AtomicLong(0L)
     @Volatile
-    private var activeProcess: ActivePiBridgeProcess? = null
+    private var activeProcess: TermuxBridgeProcess? = null
 
     suspend fun ping(
         onSetupProgress: (PiCoreSetupUpdate) -> Unit = {},
@@ -290,7 +305,7 @@ class PiKernelBridge(
         )
 
     suspend fun listDiscoveredSkills(
-        workspaceDirectory: String = alpineRuntime.workspaceRoot,
+        workspaceDirectory: String = TermuxContract.HomeDirectory + "/.sunshine/workspace",
     ): JSONObject = request(
         type = "list_discovered_skills",
         payload = JSONObject()
@@ -496,8 +511,9 @@ class PiKernelBridge(
             val stoppedProcess = synchronized(processStateLock) {
                 activeProcess.also { activeProcess = null }
             }
-            runCatching { stoppedProcess?.writer?.close() }
-            runCatching { stoppedProcess?.process?.destroy() }
+            stoppedProcess?.let { process ->
+                runCatching { killBridgeProcess(process) }
+            }
         }
     }
 
@@ -572,7 +588,7 @@ class PiKernelBridge(
                     requestId = id,
                     details = mapOf(
                         "process_generation" to process.generation,
-                        "process_alive" to process.process.isAlive,
+                        "process_alive" to !process.exited,
                     ),
                 )
                 process
@@ -595,10 +611,7 @@ class PiKernelBridge(
                     "process_generation" to requestProcess.generation,
                 ),
             )
-            synchronized(requestProcess.writer) {
-                request.writeJsonLine(requestProcess.writer)
-                requestProcess.writer.flush()
-            }
+            writeLine(requestProcess, request.toJsonLine())
             diagnosticLogger.event(
                 category = "pi_bridge",
                 event = "request_write_end",
@@ -687,7 +700,7 @@ class PiKernelBridge(
 
     private suspend fun ensureStartedLocked(
         onSetupProgress: (PiCoreSetupUpdate) -> Unit = {},
-    ): ActivePiBridgeProcess {
+    ): TermuxBridgeProcess {
         mutex.withLock {
             diagnosticLogger.event(
                 category = "pi_bridge",
@@ -707,8 +720,7 @@ class PiKernelBridge(
             val staleProcess = synchronized(processStateLock) {
                 activeProcess.also { activeProcess = null }
             }
-            runCatching { staleProcess?.writer?.close() }
-            runCatching { staleProcess?.process?.destroy() }
+            staleProcess?.let { runCatching { killBridgeProcess(it) } }
 
             diagnosticLogger.event(
                 category = "pi_bridge",
@@ -720,12 +732,7 @@ class PiKernelBridge(
                 event = "ensure_node_available_end",
             )
             onSetupProgress(PiCoreSetupUpdate(PiCoreSetupPhase.PreparingBridge))
-            alpineRuntime.installAsset(
-                assetPath = PiBridgeAssetPath,
-                guestPath = PiBridgeGuestPath,
-                executable = false,
-            )
-            alpineRuntime.installPreinstalledExtensions()
+            installBridgeIfNeeded()
             onSetupProgress(PiCoreSetupUpdate(PiCoreSetupPhase.StartingBridge))
             diagnosticLogger.event(
                 category = "pi_bridge",
@@ -735,27 +742,22 @@ class PiKernelBridge(
                     "working_directory" to PiBridgeWorkingDirectory,
                 ),
             )
-            val started = alpineRuntime.startManagedProcess(
-                command = "node ${shellQuote(PiBridgeGuestPath)}",
-                workingDirectory = PiBridgeWorkingDirectory,
-            )
+            val runId = startTermuxBridgeProcess()
             diagnosticLogger.event(
                 category = "pi_bridge",
                 event = "start_managed_process_end",
                 details = mapOf(
-                    "process_alive" to started.isAlive,
+                    "run_id" to runId,
                 ),
             )
-            val startedProcess = ActivePiBridgeProcess(
-                process = started,
-                writer = BufferedWriter(OutputStreamWriter(started.outputStream, Charsets.UTF_8)),
+            val startedProcess = TermuxBridgeProcess(
+                runId = runId,
                 generation = nextProcessGeneration.incrementAndGet(),
             )
+            startLogPoller(startedProcess)
             synchronized(processStateLock) {
                 activeProcess = startedProcess
             }
-            startStdoutReader(startedProcess)
-            startStderrReader(startedProcess)
             diagnosticLogger.event(
                 category = "pi_bridge",
                 event = "process_started",
@@ -773,31 +775,31 @@ class PiKernelBridge(
         }
     }
 
-    private fun currentLiveProcess(): ActivePiBridgeProcess? =
+    private fun currentLiveProcess(): TermuxBridgeProcess? =
         synchronized(processStateLock) {
-            activeProcess?.takeIf { it.process.isAlive }
+            activeProcess?.takeIf { !it.exited }
         }
 
     private suspend fun ensureNodeAvailable(
         onSetupProgress: (PiCoreSetupUpdate) -> Unit,
     ) {
-        onSetupProgress(PiCoreSetupUpdate(PiCoreSetupPhase.CheckingAlpine))
-        // Require explicit Alpine initialize; never download/install here.
-        val setup = alpineRuntime.inspectSetup()
+        onSetupProgress(PiCoreSetupUpdate(PiCoreSetupPhase.CheckingRuntime))
+        // Termux must already be set up; never install packages silently here.
+        val setup = bashTool.inspectSetup()
         diagnosticLogger.event(
             category = "pi_bridge",
-            event = "alpine_setup_inspected",
+            event = "termux_setup_inspected",
             details = mapOf(
-                "is_ready" to setup.isReady,
+                "is_ready" to (setup.issue == com.highsockscapital.sunshine.termux.TermuxSetupIssue.Ready),
                 "detail" to setup.detail,
             ),
         )
-        if (!setup.isReady) {
+        if (setup.issue != com.highsockscapital.sunshine.termux.TermuxSetupIssue.Ready) {
             throw PiBridgeException(
                 setup.detail.ifBlank {
-                    "Initialize Alpine before starting the agent runtime."
+                    "Set up Termux before starting the agent runtime."
                 },
-                code = "alpine_not_ready",
+                code = "termux_not_ready",
             )
         }
         onSetupProgress(PiCoreSetupUpdate(PiCoreSetupPhase.CheckingNode))
@@ -811,74 +813,16 @@ class PiKernelBridge(
             ),
         )
         if (version == null || compareSemver(version, PiBridgeNodeMinVersion) < 0) {
-            onSetupProgress(PiCoreSetupUpdate(PiCoreSetupPhase.InstallingNode))
-            diagnosticLogger.event(
-                category = "pi_bridge",
-                event = "node_profile_install_start",
-                level = "warn",
-                details = mapOf(
-                    "current_version" to version.orEmpty(),
-                    "required_version" to PiBridgeNodeMinVersion,
-                ),
+            throw PiBridgeException(
+                "Pi bridge requires Node.js >= $PiBridgeNodeMinVersion in Termux. " +
+                    "Install it with: pkg install nodejs",
+                code = "node_missing_or_too_old",
             )
-            val installState = alpineRuntime.installPackageProfile("node") { progress ->
-                onSetupProgress(
-                    PiCoreSetupUpdate(
-                        phase = PiCoreSetupPhase.InstallingNode,
-                        activity = PiCoreSetupActivity.Downloading,
-                        bytesPerSecond = progress.bytesPerSecond,
-                        output = progress.output,
-                    )
-                )
-            }
-            if (!installState.isReady) {
-                throw PiBridgeException(
-                    installState.detail.ifBlank { "Failed to install Node.js inside Alpine." },
-                    code = "node_install_failed",
-                )
-            }
-            val installedVersion = readNodeVersion()
-            if (installedVersion == null || compareSemver(installedVersion, PiBridgeNodeMinVersion) < 0) {
-                throw PiBridgeException(
-                    "Pi bridge requires Alpine node >= $PiBridgeNodeMinVersion, found ${installedVersion ?: "none"}.",
-                    code = "node_version_too_old",
-                )
-            }
-        }
-
-        if (!alpineRuntime.isPackageProfileInstalled("git_search")) {
-            diagnosticLogger.event(
-                category = "pi_bridge",
-                event = "git_search_install_start",
-                level = "warn",
-            )
-            val installState = alpineRuntime.installPackageProfile("git_search") { progress ->
-                onSetupProgress(
-                    PiCoreSetupUpdate(
-                        phase = PiCoreSetupPhase.InstallingNode,
-                        activity = PiCoreSetupActivity.Downloading,
-                        bytesPerSecond = progress.bytesPerSecond,
-                        output = progress.output,
-                    )
-                )
-            }
-            if (!installState.isReady) {
-                throw PiBridgeException(
-                    installState.detail.ifBlank { "Failed to install Pi search tools inside Alpine." },
-                    code = "pi_search_tools_install_failed",
-                )
-            }
         }
     }
 
     private suspend fun readNodeVersion(): String? {
-        val raw = JSONObject(
-            alpineRuntime.executeCommand(
-                command = "node --version",
-                workingDirectory = alpineRuntime.homeDirectory,
-                awaitTimeoutMillis = 30_000L,
-            )
-        )
+        val raw = guestFiles.execute("node --version", PiBridgeHomeDirectory)
         if (!raw.optBoolean("ok")) return null
         return raw.optString("stdout")
             .lineSequence()
@@ -887,89 +831,180 @@ class PiKernelBridge(
             ?.removePrefix("v")
     }
 
-    private fun startStdoutReader(startedProcess: ActivePiBridgeProcess) {
-        Thread(
-            {
-                diagnosticLogger.event(
-                    category = "pi_bridge",
-                    event = "stdout_reader_started",
-                    details = mapOf("process_generation" to startedProcess.generation),
-                )
-                val parser = PiJsonlParser(
-                    onFrame = { frame ->
-                        handleFrameFromReader(frame, startedProcess.generation)
+    private suspend fun installBridgeIfNeeded() {
+        guestFiles.ensureDirectory(PiBridgeWorkingDirectory)
+        val currentVersion = runCatching {
+            guestFiles.readFileBytes(PiBridgeVersionMarkerPath).decodeToString().trim()
+        }.getOrNull()
+        val bridgeInstalled = guestFiles.exists(PiBridgeGuestPath)
+        if (bridgeInstalled && currentVersion == PiBridgeVersion) return
+        diagnosticLogger.event(
+            category = "pi_bridge",
+            event = "bridge_asset_install_start",
+            details = mapOf(
+                "installed" to bridgeInstalled,
+                "current_version" to currentVersion.orEmpty(),
+                "target_version" to PiBridgeVersion,
+            ),
+        )
+        guestFiles.installAsset(PiBridgeAssetPath, PiBridgeGuestPath)
+        guestFiles.writeFileBytes(
+            PiBridgeVersionMarkerPath,
+            PiBridgeVersion.toByteArray(Charsets.UTF_8),
+        )
+    }
+
+    /** Launches node inside Termux as a managed background run with a FIFO stdin. */
+    private suspend fun startTermuxBridgeProcess(): String {
+        // NOTE: must be a newline-separated script. A single-line version with
+        // `&` after the holder subshell backgrounds the entire preceding
+        // `cd && rm && mkfifo` chain, letting `node < fifo` race against mkfifo.
+        val launchResult = guestFiles.execute(
+            command = listOf(
+                "cd ${TermuxGuestFiles.shellQuote(PiBridgeWorkingDirectory)} || exit 1",
+                "rm -f ${q("bridge.log")} ${q("bridge.in")} ${q("bridge.exit")} ${q("node.pid")} ${q("stdout.offset")}",
+                "mkfifo ${q("bridge.in")} || exit 1",
+                "( echo $$ > ${q("holder.pid")}; exec sleep infinity ) > ${q("bridge.in")} 2>/dev/null &",
+                "nohup node ${TermuxGuestFiles.shellQuote(PiBridgeGuestPath)} < ${q("bridge.in")} >> ${q("bridge.log")} 2>&1 &",
+                "echo $! > ${q("node.pid")}",
+                "echo BRIDGE_LAUNCHED",
+            ).joinToString(separator = "\n"),
+            workingDirectory = PiBridgeWorkingDirectory,
+        )
+        require(launchResult.optBoolean("ok")) {
+            launchResult.optString("stderr").ifBlank { "Failed to launch the agent runtime." }
+        }
+        require(launchResult.optString("stdout").contains("BRIDGE_LAUNCHED")) {
+            launchResult.optString("stderr").ifBlank { "Failed to launch the agent runtime." }
+        }
+        // Managed-run id is not strictly needed for polling (we poll files), but
+        // registering one lets the user kill the run from the UI if it hangs.
+        val runId = "pi-bridge-${System.currentTimeMillis()}"
+        return runId
+    }
+
+    private suspend fun writeLine(process: TermuxBridgeProcess, line: String) {
+        writerMutex.withLock {
+            val result = guestFiles.execute(
+                command = "printf '%s\\n' ${shellQuote(line)} > ${shellQuote(PiBridgeFifoPath)}",
+                workingDirectory = PiBridgeWorkingDirectory,
+            )
+            if (!result.optBoolean("ok")) {
+                failPendingRequests(
+                    exitedProcess = process,
+                    message = result.optString("stderr").ifBlank {
+                        "Couldn't send the request to the agent runtime."
                     },
-                    onInvalidLine = { line, throwable ->
-                        diagnosticLogger.exception(
-                            category = "pi_bridge",
-                            event = "invalid_stdout_json",
-                            throwable = throwable,
-                            details = mapOf(
-                                "line" to DiagnosticRedactor.sanitizeString(line.take(700)),
-                            ),
-                        )
-                    },
                 )
-                runCatching {
-                    BufferedReader(
-                        InputStreamReader(startedProcess.process.inputStream, Charsets.UTF_8)
-                    ).useLines { lines ->
-                        lines.forEach { line -> parser.accept(line + "\n") }
-                    }
-                    parser.flush()
-                }.onFailure { throwable ->
+                throw PiBridgeException(
+                    result.optString("stderr").ifBlank { "Couldn't reach the agent runtime." },
+                    code = "bridge_write_failed",
+                )
+            }
+        }
+    }
+
+    private suspend fun killBridgeProcess(process: TermuxBridgeProcess) {
+        process.exited = true
+        guestFiles.execute(
+            command = "test -f ${q("node.pid")} && kill \$(cat ${q("node.pid")}) 2>/dev/null; " +
+                "test -f ${q("holder.pid")} && kill \$(cat ${q("holder.pid")}) 2>/dev/null; true",
+            workingDirectory = PiBridgeWorkingDirectory,
+        )
+    }
+
+    /**
+     * Polls the bridge log file for new bytes, feeding complete JSONL frames to
+     * [PiJsonlParser]. Detects process exit via the bridge.exit marker file.
+     */
+    private fun startLogPoller(startedProcess: TermuxBridgeProcess) {
+        eventScope.launch {
+            var offset = 0L
+            val parser = PiJsonlParser(
+                onFrame = { frame ->
+                    handleFrameFromReader(frame, startedProcess.generation)
+                },
+                onInvalidLine = { line, throwable ->
                     diagnosticLogger.exception(
                         category = "pi_bridge",
-                        event = "stdout_reader_failed",
+                        event = "invalid_stdout_json",
+                        throwable = throwable,
+                        details = mapOf(
+                            "line" to DiagnosticRedactor.sanitizeString(line.take(700)),
+                        ),
+                    )
+                },
+            )
+            while (true) {
+                try {
+                    val stat = guestFiles.execute(
+                        command = "wc -c < ${q("bridge.log")} 2>/dev/null; " +
+                            "test -f ${q("bridge.exit")} && echo __EXITED__ || true",
+                        workingDirectory = PiBridgeWorkingDirectory,
+                    )
+                    val stdoutLines = stat.optString("stdout").trim().lines()
+                    val logSize = stdoutLines.firstOrNull()?.toLongOrNull() ?: 0L
+                    val didExit = stdoutLines.any { it.trim() == "__EXITED__" }
+                    if (logSize > offset) {
+                        val chunkResult = guestFiles.execute(
+                            command = "tail -c +${offset + 1} ${q("bridge.log")} | base64 | tr -d '\\n'",
+                            workingDirectory = PiBridgeWorkingDirectory,
+                        )
+                        if (chunkResult.optBoolean("ok")) {
+                            val decoded = runCatching {
+                                android.util.Base64.decode(
+                                    chunkResult.optString("stdout").trim(),
+                                    android.util.Base64.DEFAULT,
+                                )
+                            }.getOrNull()
+                            if (decoded != null) {
+                                offset += decoded.size.toLong()
+                                parser.accept(String(decoded, Charsets.UTF_8))
+                                parser.flush()
+                            }
+                        }
+                    } else {
+                        parser.flush()
+                    }
+                    if (didExit) {
+                        startedProcess.exited = true
+                        val exitCode = guestFiles.execute(
+                            command = "cat ${q("bridge.exit")} 2>/dev/null || true",
+                            workingDirectory = PiBridgeWorkingDirectory,
+                        ).optString("stdout").trim().toIntOrNull()
+                        startedProcess.exitCode = exitCode
+                        diagnosticLogger.event(
+                            category = "pi_bridge",
+                            event = "process_exited",
+                            level = "warn",
+                            details = mapOf(
+                                "exit_code" to exitCode,
+                                "process_generation" to startedProcess.generation,
+                            ),
+                        )
+                        synchronized(processStateLock) {
+                            if (activeProcess?.generation == startedProcess.generation) {
+                                activeProcess = null
+                            }
+                        }
+                        failPendingRequests(
+                            exitedProcess = startedProcess,
+                            message = "Pi bridge process exited.",
+                        )
+                        break
+                    }
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (throwable: Throwable) {
+                    diagnosticLogger.exception(
+                        category = "pi_bridge",
+                        event = "log_poller_failed",
                         throwable = throwable,
                         details = mapOf("process_generation" to startedProcess.generation),
                     )
                 }
-                diagnosticLogger.event(
-                    category = "pi_bridge",
-                    event = "stdout_reader_exiting",
-                    level = "warn",
-                    details = mapOf("process_generation" to startedProcess.generation),
-                )
-                eventScope.launch {
-                    failPendingRequests(
-                        exitedProcess = startedProcess,
-                        message = "Pi bridge process exited.",
-                    )
-                }
-            },
-            "sunshine-pi-bridge-stdout-${startedProcess.generation}",
-        ).apply {
-            isDaemon = true
-            start()
-        }
-    }
-
-    private fun startStderrReader(startedProcess: ActivePiBridgeProcess) {
-        Thread(
-            {
-                runCatching {
-                    BufferedReader(
-                        InputStreamReader(startedProcess.process.errorStream, Charsets.UTF_8)
-                    ).useLines { lines ->
-                        lines.forEach { line ->
-                            diagnosticLogger.event(
-                                category = "pi_bridge",
-                                event = "stderr",
-                                level = "warn",
-                                details = mapOf(
-                                    "line" to DiagnosticRedactor.sanitizeString(line),
-                                    "process_generation" to startedProcess.generation,
-                                ),
-                            )
-                        }
-                    }
-                }
-            },
-            "sunshine-pi-bridge-stderr-${startedProcess.generation}",
-        ).apply {
-            isDaemon = true
-            start()
+                delay(120L)
+            }
         }
     }
 
@@ -1060,7 +1095,7 @@ class PiKernelBridge(
     }
 
     private suspend fun failPendingRequests(
-        exitedProcess: ActivePiBridgeProcess,
+        exitedProcess: TermuxBridgeProcess,
         message: String,
     ) {
         diagnosticLogger.event(
@@ -1075,7 +1110,7 @@ class PiKernelBridge(
         )
         mutex.withLock {
             val isCurrentProcess = synchronized(processStateLock) {
-                activeProcess?.process === exitedProcess.process
+                activeProcess === exitedProcess
             }
             if (!isCurrentProcess) {
                 diagnosticLogger.event(
@@ -1100,6 +1135,9 @@ class PiKernelBridge(
             }
         }
     }
+
+    private fun q(name: String): String =
+        TermuxGuestFiles.shellQuote("$PiBridgeWorkingDirectory/$name")
 
     private fun nextRequestId(type: String): String =
         "${type}-${System.currentTimeMillis()}-${UUID.randomUUID().toString().take(8)}"

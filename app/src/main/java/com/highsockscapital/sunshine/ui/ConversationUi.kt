@@ -62,6 +62,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -159,7 +160,6 @@ import com.highsockscapital.sunshine.R
 import com.highsockscapital.sunshine.data.InstalledSkill
 import com.highsockscapital.sunshine.data.AppLanguage
 import com.highsockscapital.sunshine.data.AgentModeDisplayState
-import com.highsockscapital.sunshine.data.AlpineChromeViewerUrl
 import com.highsockscapital.sunshine.data.McpServerConfig
 import com.highsockscapital.sunshine.data.McpTransportConfig
 import com.highsockscapital.sunshine.data.ModelCatalogInfo
@@ -174,6 +174,7 @@ import com.highsockscapital.sunshine.platform.PlatformWebView
 import com.highsockscapital.sunshine.ui.theme.SunshineBackground
 import com.highsockscapital.sunshine.ui.theme.SunshineBackgroundGradientTop
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
+import com.highsockscapital.sunshine.ui.theme.SunshineOutline
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
 import com.highsockscapital.sunshine.ui.theme.SunshinePrimary
 import com.highsockscapital.sunshine.ui.theme.SunshineScrim
@@ -219,9 +220,6 @@ private val ComposerFocusedCardShape = RoundedCornerShape(28.dp)
 private val ComposerPlusMenuMaxHeight = 372.dp
 private const val ComposerPopupActionDelayMillis = 240L
 private const val MinimumWallClockMillis = 946_684_800_000L
-private val ChatGptControlShadow = Color(0x14000000)
-private val ChatGptComposerShadow = Color(0x18000000)
-private val ChatGptPurple = Color(0xFF9B5CFF)
 private val ChatGptMotionEasing = CubicBezierEasing(0.22f, 0.84f, 0.18f, 1f)
 
 internal enum class PendingGenerationIndicator {
@@ -957,15 +955,9 @@ private fun ConversationModelSelector(
                     anchorHeightPx = bounds.height.toInt()
                 },
         ) {
-            Box(
-                modifier = Modifier.matchParentSize()
-                    .offset(y = 4.dp)
-                    .blur(14.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(ChatGptControlShadow),
-            )
             Row(
                 modifier = Modifier.height(38.dp)
+                    .border(1.dp, SunshineOutline, RoundedCornerShape(999.dp))
                     .clip(RoundedCornerShape(999.dp))
                     .background(SunshineSurface.copy(alpha = 0.96f))
                     .clickable(enabled = options.isNotEmpty()) {
@@ -1067,7 +1059,7 @@ private fun ConversationModelSelector(
                         },
                         modifier = Modifier
                             .width(menuWidth)
-                            .shadow(14.dp, RoundedCornerShape(22.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                            .border(1.dp, SunshineOutline, RoundedCornerShape(22.dp))
                             .clip(RoundedCornerShape(22.dp))
                             .background(SunshineSurface)
                             .padding(vertical = 5.dp),
@@ -1534,7 +1526,6 @@ private fun PendingAssistantTimeline(
                 label = stringResource(R.string.chrome_label),
                 contentDescription = stringResource(R.string.chrome_label),
                 pendingText = stringResource(R.string.chat_chrome_preview_pending),
-                useLiveSurface = false,
                 overlayText = chromeOverlayText,
                 onAttachSurface = {},
                 onDetachSurface = {},
@@ -1595,7 +1586,6 @@ private fun PendingAssistantTimeline(
             label = stringResource(R.string.chrome_label),
             contentDescription = stringResource(R.string.chrome_label),
             pendingText = stringResource(R.string.chat_chrome_preview_pending),
-            useLiveSurface = false,
             overlayText = chromeOverlayText,
             onAttachSurface = {},
             onDetachSurface = {},
@@ -2125,7 +2115,7 @@ private fun PendingSessionInputBubble(
         Column(
             modifier = Modifier
                 .widthIn(max = 300.dp)
-                .shadow(8.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
                 .clip(RoundedCornerShape(24.dp))
                 .background(SunshineSurfaceHigh.copy(alpha = 0.96f))
                 .padding(horizontal = 18.dp, vertical = 14.dp),
@@ -2457,11 +2447,6 @@ private fun ConversationComposerBar(
         animationSpec = tween(durationMillis = 260, easing = ChatGptMotionEasing),
         label = "composer_field_min_height",
     )
-    val plusShadowElevation by animateDpAsState(
-        targetValue = if (plusSeparated) 10.dp else 0.dp,
-        animationSpec = tween(durationMillis = 260, easing = ChatGptMotionEasing),
-        label = "composer_plus_shadow",
-    )
 
     Column(
         modifier = modifier
@@ -2550,17 +2535,6 @@ private fun ConversationComposerBar(
                     .fillMaxWidth()
                     .padding(start = fieldStartPadding)
             ) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .offset(y = 8.dp)
-                        .blur(
-                            radius = 22.dp,
-                            edgeTreatment = BlurredEdgeTreatment.Unbounded,
-                        )
-                        .clip(fieldShape)
-                        .background(ChatGptComposerShadow),
-                )
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2568,6 +2542,7 @@ private fun ConversationComposerBar(
                         .animateContentSize(
                             animationSpec = tween(durationMillis = 320, easing = ChatGptMotionEasing),
                         )
+                        .border(1.dp, SunshineOutline, fieldShape)
                         .clip(fieldShape)
                         .background(SunshineSurface)
                         .padding(
@@ -2716,7 +2691,7 @@ private fun ConversationComposerBar(
                                             Column(
                                                 modifier = Modifier
                                                     .widthIn(min = 252.dp, max = 284.dp)
-                                                    .shadow(20.dp, RoundedCornerShape(30.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                                                    .border(1.dp, SunshineOutline, RoundedCornerShape(30.dp))
                                                     .clip(RoundedCornerShape(30.dp))
                                                     .background(SunshineSurface)
                                                     .padding(horizontal = 12.dp, vertical = 12.dp),
@@ -2758,7 +2733,7 @@ private fun ConversationComposerBar(
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .shadow(plusShadowElevation, CircleShape, ambientColor = ChatGptControlShadow, spotColor = ChatGptControlShadow)
+                        .border(width = if (plusSeparated) 1.dp else 0.dp, color = SunshineOutline, shape = CircleShape)
                         .clip(CircleShape)
                         .background(if (plusSeparated) SunshineSurface else Color.Transparent)
                         .clickable(onClick = { attachmentMenuExpanded = !attachmentMenuExpanded }),
@@ -2803,7 +2778,7 @@ private fun ConversationComposerBar(
                             Box(
                                 modifier = Modifier
                                     .widthIn(min = 284.dp, max = 304.dp)
-                                    .shadow(20.dp, RoundedCornerShape(30.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                                    .border(1.dp, SunshineOutline, RoundedCornerShape(30.dp))
                                     .clip(RoundedCornerShape(30.dp))
                                     .background(SunshineSurface),
                             ) {
@@ -2840,7 +2815,7 @@ private fun ConversationComposerBar(
                                             title = stringResource(R.string.agent_mode_label),
                                             icon = LucideIcons.MousePointer2,
                                             selected = agentModeSelected,
-                                            iconTint = Color(0xFF6D5CFF),
+                                            iconTint = SunshinePrimary,
                                             iconContainerColor = SunshineSurfaceHigh,
                                             onClick = {
                                                 runAfterAttachmentMenuDismiss {
@@ -2936,7 +2911,7 @@ private fun ComposerPauseButton(
         modifier = Modifier
             .size(38.dp)
             .clip(CircleShape)
-            .background(ChatGptPurple)
+            .background(SunshinePrimary)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -2959,7 +2934,7 @@ private fun ComposerSubmitButton(
 ) {
     val enabled = hasDraft && canSendDraft
     val buttonColor = if (enabled) {
-        ChatGptPurple
+        SunshinePrimary
     } else {
         SunshineSurfaceHigher
     }
@@ -3048,7 +3023,6 @@ private fun AgentModePreviewPanel(
     label: String? = null,
     contentDescription: String? = null,
     pendingText: String? = null,
-    useLiveSurface: Boolean = true,
     overlayText: String = "",
     workspaceDirectory: String = "",
     allowRootImageRead: Boolean = false,
@@ -3069,7 +3043,7 @@ private fun AgentModePreviewPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .background(SunshineSurface)
             .padding(14.dp),
@@ -3081,7 +3055,7 @@ private fun AgentModePreviewPanel(
             AgentModePreviewHeader(
                 displayState = displayState,
                 label = resolvedLabel,
-                isChrome = !useLiveSurface,
+                isChrome = false,
             )
         }
         if (displayState.isActive || bitmap != null) {
@@ -3118,25 +3092,11 @@ private fun AgentModePreviewPanel(
                     animationSpec = tween(durationMillis = animationDurationMillis, easing = ChatGptMotionEasing),
                     label = "agent_mode_cursor_offset",
                 )
-                if (displayState.isActive && useLiveSurface) {
+                if (displayState.isActive) {
                     AgentModeLivePreviewSurface(
                         displayState = displayState,
                         onAttachSurface = onAttachSurface,
                         onDetachSurface = onDetachSurface,
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .padding(10.dp)
-                            .aspectRatio(
-                                displayState.width.coerceAtLeast(1).toFloat() /
-                                    displayState.height.coerceAtLeast(1).toFloat(),
-                                matchHeightConstraintsFirst = true,
-                            )
-                            .clip(RoundedCornerShape(14.dp)),
-                    )
-                } else if (displayState.isActive && !useLiveSurface) {
-                    PlatformWebView(
-                        url = AlpineChromeViewerUrl,
-                        scrollEnabled = false,
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(10.dp)
@@ -3310,7 +3270,7 @@ private fun AgentModeCursorTextBubble(
     Box(
         modifier = modifier
             .widthIn(max = 320.dp)
-            .shadow(18.dp, RoundedCornerShape(12.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .background(SunshineSurface)
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -3397,7 +3357,7 @@ private fun AgentModePreviewHeader(
         Icon(
             imageVector = if (isChrome) Icons.Rounded.Public else LucideIcons.MousePointer2,
             contentDescription = null,
-            tint = Color(0xFF6D5CFF),
+            tint = SunshinePrimary,
             modifier = Modifier.size(16.dp),
         )
         Text(

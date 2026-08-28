@@ -107,10 +107,6 @@ enum class LocalRuntimeId(
     Termux(
         storageValue = "termux",
         displayName = "Termux",
-    ),
-    Alpine(
-        storageValue = "alpine",
-        displayName = "Alpine",
     );
 
     companion object {
@@ -118,20 +114,6 @@ enum class LocalRuntimeId(
             entries.firstOrNull { it.storageValue == value }
     }
 }
-
-@Serializable
-data class PackageProfileState(
-    val profileId: String,
-    val installed: Boolean = false,
-    val installedAtMillis: Long = 0L,
-    val lastError: String = "",
-)
-
-@Serializable
-data class AlpineEnvironmentVariable(
-    val name: String,
-    val value: String,
-)
 
 @Serializable
 data class AppSettings(
@@ -160,9 +142,6 @@ data class AppSettings(
     val termuxEnvironmentVariables: List<TermuxEnvironmentVariable> = emptyList(),
     val enabledRuntimeIds: Set<LocalRuntimeId> = emptySet(),
     val defaultRuntimeId: LocalRuntimeId? = null,
-    val alpineSetupCompleted: Boolean = false,
-    val alpinePackageProfiles: Map<String, PackageProfileState> = emptyMap(),
-    val alpineEnvironmentVariables: List<AlpineEnvironmentVariable> = emptyList(),
     val agentModeAuthorizationEnabled: Boolean = false,
     val agentModeAuthorizationMethod: AgentModeAuthorizationMethod = AgentModeAuthorizationMethod.Shizuku,
     val language: AppLanguage = defaultAppLanguage(),
@@ -202,7 +181,7 @@ data class TermuxEnvironmentVariable(
 )
 
 const val CurrentOnboardingVersion = 1
-const val DefaultReasoningEffort = "off"
+const val DefaultReasoningEffort = "high"
 val SupportedReasoningEfforts: List<String> = listOf(
     "off",
     "minimal",
@@ -392,7 +371,7 @@ fun parseProviderConfigs(rawValue: String): List<LlmProviderConfig> {
                 val storedPiProviderId = json.string("piProviderId").trim()
                 val storedBaseUrl = json.string("baseUrl").trim()
                 val piProviderId = storedPiProviderId.ifBlank {
-                    inferLegacyPiProviderId(json.string("providerType"), storedBaseUrl)
+                    inferPiProviderIdFromBaseUrl(storedBaseUrl)
                 }
                 val providerDefinition = PiProviderCatalog.resolve(piProviderId)
                 val providerName = json.string("name").trim()

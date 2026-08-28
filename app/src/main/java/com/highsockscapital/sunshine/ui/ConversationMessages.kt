@@ -58,6 +58,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -134,6 +135,7 @@ import com.highsockscapital.sunshine.ui.theme.SunshineError
 import com.highsockscapital.sunshine.ui.theme.SunshineOnPrimaryContainer
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
+import com.highsockscapital.sunshine.ui.theme.SunshineOutline
 import com.highsockscapital.sunshine.ui.theme.SunshineOutlineSoft
 import com.highsockscapital.sunshine.ui.theme.SunshinePrimary
 import com.highsockscapital.sunshine.ui.theme.SunshineScrim
@@ -238,7 +240,7 @@ fun SurfaceNotice(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .background(SunshineSurface.copy(alpha = 0.96f))
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -331,7 +333,7 @@ fun TermuxSetupNotice(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .background(SunshineSurface.copy(alpha = 0.96f))
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -487,7 +489,7 @@ fun ComposerAttachmentTray(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(10.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .background(SunshineSurface.copy(alpha = 0.96f))
             .padding(10.dp),
@@ -622,7 +624,7 @@ private fun UserMessageActionDialog(
             Column(
                 modifier = Modifier
                     .width(228.dp)
-                    .shadow(20.dp, RoundedCornerShape(30.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                    .border(1.dp, SunshineOutline, RoundedCornerShape(30.dp))
                     .clip(RoundedCornerShape(30.dp))
                     .background(SunshineSurface)
                     .padding(horizontal = 12.dp, vertical = 12.dp),
@@ -762,7 +764,7 @@ private fun SelectUserMessageTextDialog(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
                 .widthIn(max = 520.dp)
-                .shadow(22.dp, RoundedCornerShape(28.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                .border(1.dp, SunshineOutline, RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
                 .background(SunshineSurface)
                 .padding(22.dp),
@@ -807,7 +809,7 @@ private fun UserTextBubble(
     Box(
         modifier = Modifier
             .widthIn(max = maxWidth)
-            .shadow(10.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .background(SunshineMessageBubble)
             .combinedClickable(
@@ -1239,7 +1241,7 @@ private fun AgentModeReplayPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .background(SunshineSurface)
             .padding(14.dp),
@@ -1390,7 +1392,7 @@ private fun AgentModeCursorTextBubble(
     Box(
         modifier = modifier
             .widthIn(max = 320.dp)
-            .shadow(18.dp, RoundedCornerShape(12.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .background(SunshineSurface)
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -2851,7 +2853,7 @@ fun AttachmentPreviewDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 18.dp, vertical = 24.dp)
-                .shadow(24.dp, RoundedCornerShape(30.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                .border(1.dp, SunshineOutline, RoundedCornerShape(30.dp))
                 .clip(RoundedCornerShape(30.dp))
             .background(SunshineSurface.copy(alpha = 0.98f))
                 .padding(18.dp),
@@ -2999,7 +3001,7 @@ private fun UserImageAttachmentCard(
     Box(
         modifier = Modifier
             .widthIn(max = 300.dp)
-            .shadow(10.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .background(SunshineSurface)
             .clickable(onClick = onClick)
@@ -3040,7 +3042,7 @@ private fun UserFileAttachmentCard(
     Row(
         modifier = Modifier
             .widthIn(max = 300.dp)
-            .shadow(10.dp, RoundedCornerShape(22.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(22.dp))
             .clip(RoundedCornerShape(22.dp))
             .background(SunshineSurface)
             .clickable(onClick = onClick)
@@ -3357,7 +3359,7 @@ private fun MessageStatisticsPopup(
     Column(
         modifier = modifier
             .widthIn(min = 236.dp, max = 300.dp)
-            .shadow(18.dp, RoundedCornerShape(22.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(22.dp))
             .clip(RoundedCornerShape(22.dp))
             .background(SunshineSurface.copy(alpha = 0.98f))
             .padding(16.dp),

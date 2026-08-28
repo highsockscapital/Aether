@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -42,12 +43,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
+import com.highsockscapital.sunshine.ui.theme.SunshineOutline
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
 import com.highsockscapital.sunshine.platform.LocalReduceMotion
 import com.highsockscapital.sunshine.ui.theme.SunshineSurface
 
-private val ConversationControlShadow = Color(0x14000000)
-private val ConversationControlHalo = Color(0x18000000)
 private val ConversationMotionEasing = CubicBezierEasing(0.22f, 0.84f, 0.18f, 1f)
 
 @Composable
@@ -103,15 +103,9 @@ fun SunshineSimpleModelSelector(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxWidth().height(38.dp)) {
-        Box(
-            modifier = Modifier.matchParentSize()
-                .offset(y = 4.dp)
-                .blur(14.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                .clip(RoundedCornerShape(999.dp))
-                .background(ConversationControlHalo),
-        )
         Row(
             modifier = Modifier.matchParentSize()
+                .border(1.dp, SunshineOutline, RoundedCornerShape(999.dp))
                 .clip(RoundedCornerShape(999.dp))
                 .background(SunshineSurface.copy(alpha = 0.96f))
                 .padding(horizontal = 17.dp),
@@ -179,7 +173,7 @@ fun SunshineConversationEmptyState(
                 ConversationStarterChip(
                     icon = Icons.Rounded.Terminal,
                     label = codeLabel,
-                    iconTint = Color(0xFF7D70DD),
+                    iconTint = Color(0xFFFF9E43),
                     onClick = { onStarterPromptSelected("Help me write or debug this code: ") },
                 )
             }
@@ -214,12 +208,7 @@ private fun ConversationStarterChip(
 ) {
     Row(
         modifier = Modifier
-            .shadow(
-                6.dp,
-                RoundedCornerShape(999.dp),
-                ambientColor = ConversationControlShadow,
-                spotColor = ConversationControlShadow,
-            )
+            .border(1.dp, SunshineOutline, RoundedCornerShape(999.dp))
             .clip(RoundedCornerShape(999.dp))
             .background(SunshineSurface.copy(alpha = 0.98f))
             .clickable(onClick = onClick)

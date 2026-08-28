@@ -70,7 +70,6 @@ class SharedAppDataArchiveTest {
                 providerConfigId = provider.id,
                 apiKey = "legacy-secret",
                 defaultSelectedSkillIds = listOf("review"),
-                alpineEnvironmentVariables = listOf(AlpineEnvironmentVariable("NODE_ENV", "test")),
             ),
             providerConfigs = Json.parseToJsonElement(
                 serializeProviderConfigs(listOf(provider)),
@@ -142,7 +141,6 @@ class SharedAppDataArchiveTest {
         assertEquals("Answer", decoded.sessions.single().messages.last().text)
         assertEquals(30L, decoded.sessions.single().messages.last().completedAtMillis)
         assertEquals(false, decoded.skillBundles.single().isEnabled)
-        assertEquals("test", decoded.settings.alpineEnvironmentVariables.single().value)
         assertEquals("docs", decoded.mcpServers.single().jsonObject["id"]?.jsonPrimitive?.content)
         assertEquals("npm:example-extension", decoded.extensionArchive?.packageSources?.single())
         assertEquals(
@@ -265,10 +263,6 @@ class SharedAppDataArchiveTest {
                 "customHeaders": [
                   {"name":"X-Trace","value":"trace"},
                   {"value":"missing-name"}
-                ],
-                "alpinePackageProfiles": [
-                  {"profileId":"core","installed":true,"installedAtMillis":123},
-                  {"installed":true}
                 ]
               }
             }
@@ -287,7 +281,6 @@ class SharedAppDataArchiveTest {
         assertEquals(listOf("review", "7", "review"), settings.defaultSelectedSkillIds)
         assertEquals("OPENAI_ORG_ID", settings.providerEnvironmentVariables.single().name)
         assertEquals("X-Trace", settings.customHeaders.single().name)
-        assertEquals(123L, settings.alpinePackageProfiles.getValue("core").installedAtMillis)
     }
 
     @Test

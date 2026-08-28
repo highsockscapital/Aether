@@ -131,6 +131,18 @@ android {
     }
 
     signingConfigs {
+        // Fixed debug keystore checked into the repo so CI-built APKs all
+        // share one signature and install over each other cleanly.
+        getByName("debug") {
+            val fixedDebugKeystore = rootProject.file("keystore/debug.keystore")
+            if (fixedDebugKeystore.exists()) {
+                storeFile = fixedDebugKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+
         create("nightly") {
             if (
                 nightlyKeystoreFile.isNotBlank() &&

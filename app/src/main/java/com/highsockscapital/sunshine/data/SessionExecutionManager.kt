@@ -6,6 +6,7 @@ import com.highsockscapital.sunshine.SunshineForegroundService
 import com.highsockscapital.sunshine.SunshineNotificationController
 import com.highsockscapital.sunshine.AppForegroundTracker
 import com.highsockscapital.sunshine.runtime.RuntimeRouter
+import com.highsockscapital.sunshine.runtime.TermuxGuestFiles
 import com.highsockscapital.sunshine.runtime.RuntimeShellTool
 import com.highsockscapital.sunshine.data.pi.PiAgentRunner
 import com.highsockscapital.sunshine.data.pi.PiCompletionClient
@@ -179,7 +180,8 @@ class SessionExecutionManager(
     private val piKernelBridge: PiKernelBridge,
     private val piAgentRunner: PiAgentRunner,
 ) {
-    private val skillRuntimeMirror = SkillRuntimeMirror(runtimeRouter)
+    private val skillRuntimeMirror =
+        SkillRuntimeMirror(TermuxGuestFiles(application, bashTool))
     private val currentSettings = MutableStateFlow(AppSettings())
     private val currentProviderConfigs = MutableStateFlow<List<LlmProviderConfig>>(emptyList())
     private val currentExtensionsState = MutableStateFlow(AgentExtensionsState())
@@ -578,7 +580,7 @@ class SessionExecutionManager(
             val activeRuntimeId = LocalRuntimeId.fromStorage(agentSessionMetadata?.runtime)
                 ?: runtimeRouter.runtimeFor(request.settings, null)?.id
                 ?: request.settings.defaultRuntimeId
-                ?: LocalRuntimeId.Alpine
+                ?: LocalRuntimeId.Termux
             val runtimeWorkspaceDirectory = runtimeRouter.runtimeWorkspaceDirectory(
                 settings = request.settings,
                 termuxWorkspaceDirectory = workspaceDirectory,
@@ -954,12 +956,12 @@ class SessionExecutionManager(
         sessionFile: String,
     ): Boolean {
         if (expectedSessionId.isBlank() || sessionFile.isBlank()) return false
-        val alpine = runtimeRouter.runtimeById(LocalRuntimeId.Alpine)
+        val termux = runtimeRouter.runtimeById(LocalRuntimeId.Termux)
         val result = runCatching {
             JSONObject(
-                alpine.executeCommand(
+                termux.executeCommand(
                     command = "head -n 1 -- ${shellQuote(sessionFile)}",
-                    workingDirectory = alpine.homeDirectory,
+                    workingDirectory = termux.homeDirectory,
                     awaitTimeoutMillis = 15_000L,
                 )
             )
@@ -1717,9 +1719,6 @@ class SessionExecutionManager(
         request.agentModeEnabled && !request.settings.agentModeAuthorizationEnabled ->
                 "Agent Mode is selected, but authorization is disabled. Enable it in Settings > Agent Mode first."
 
-        request.chromeEnabled &&
-            request.settings.alpinePackageProfiles["chrome"]?.installed != true ->
-                "Chrome is selected, but it is not installed. Install it in Settings > Alpine first."
 
         else -> validateSettings(request.settings)
     }

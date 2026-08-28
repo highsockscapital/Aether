@@ -136,7 +136,10 @@ data class AgentFileInfo(
  */
 object AgentFrontmatter {
 
-    private val FrontmatterRegex = Regex("\\A---\\r?\\n(.*?)\\r?\\n---(?:\\r?\\n|\\z)", RegexOption.DOT_MATCHES_ALL)
+    // Lookahead keeps the newline after the closing delimiter out of the match,
+// so reconstruction below can always append "\n---" + the original remainder
+// without losing (or duplicating) the separator line.
+private val FrontmatterRegex = Regex("\\A---\\r?\\n(.*?)\\r?\\n---(?=\\r?\\n|\\z)", RegexOption.DOT_MATCHES_ALL)
     private val ModelLineRegex = Regex("(?m)^model:\\s*.*$")
 
     fun parseModelId(markdown: String): String {

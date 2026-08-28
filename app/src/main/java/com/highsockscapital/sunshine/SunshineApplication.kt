@@ -8,7 +8,6 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.posthog.android.PostHogAndroid
 import com.posthog.android.PostHogAndroidConfig
 import com.highsockscapital.sunshine.data.AgentExtensionsRepository
-import com.highsockscapital.sunshine.data.AlpineChromeController
 import com.highsockscapital.sunshine.data.AgentModeController
 import com.highsockscapital.sunshine.data.AgentSkillManager
 import com.highsockscapital.sunshine.data.SunshineAppExtensionManager
@@ -32,7 +31,7 @@ import com.highsockscapital.sunshine.data.pi.PiCompletionClient
 import com.highsockscapital.sunshine.data.pi.PiAgentRunner
 import com.highsockscapital.sunshine.data.pi.PiKernelBridge
 import com.highsockscapital.sunshine.mod.SunshineNativeModManager
-import com.highsockscapital.sunshine.runtime.AlpineRuntime
+import com.highsockscapital.sunshine.runtime.TermuxGuestFiles
 import com.highsockscapital.sunshine.runtime.RuntimeRouter
 import com.highsockscapital.sunshine.runtime.TermuxRuntime
 import com.highsockscapital.sunshine.termux.TermuxBashTool
@@ -118,18 +117,16 @@ class SunshineAppRuntime(
         diagnosticLogger = diagnosticLogger,
     )
     val termuxRuntime = TermuxRuntime(bashTool)
-    val alpineRuntime = AlpineRuntime(
-        context = application,
-        diagnosticLogger = diagnosticLogger,
-    )
+    val termuxGuestFiles = TermuxGuestFiles(application, bashTool)
     val piKernelBridge = PiKernelBridge(
-        alpineRuntime = alpineRuntime,
+        context = application,
+        bashTool = bashTool,
         diagnosticLogger = diagnosticLogger,
     )
     val nativeModManager = SunshineNativeModManager(
         context = application,
         application = application,
-        alpineRuntime = alpineRuntime,
+        guestFiles = termuxGuestFiles,
         piKernelBridge = piKernelBridge,
         kernel = modKernel,
         piExtensionStateRepository = piExtensionStateRepository,
@@ -141,7 +138,6 @@ class SunshineAppRuntime(
     )
     val runtimeRouter = RuntimeRouter(
         termuxRuntime = termuxRuntime,
-        alpineRuntime = alpineRuntime,
     )
     val rootSetupController = RootSetupController(
         context = application,
@@ -154,8 +150,6 @@ class SunshineAppRuntime(
     )
     val runtimeWorkspaceFileBridge = RuntimeWorkspaceFileBridge(
         context = application,
-        runtimeRouter = runtimeRouter,
-        alpineRuntime = alpineRuntime,
         termuxFileBridge = workspaceFileBridge,
     )
     val agentModeController = AgentModeController(
@@ -164,18 +158,13 @@ class SunshineAppRuntime(
         runtimeWorkspaceFileBridge = runtimeWorkspaceFileBridge,
         diagnosticLogger = diagnosticLogger,
     )
-    val alpineChromeController = AlpineChromeController(
-        context = application,
-        alpineRuntime = alpineRuntime,
-        diagnosticLogger = diagnosticLogger,
-    )
     val skillManager = AgentSkillManager(
         context = application,
         extensionsRepository = extensionsRepository,
     )
     val piExtensionManager = PiExtensionManager(
         context = application,
-        alpineRuntime = alpineRuntime,
+        guestFiles = termuxGuestFiles,
         piKernelBridge = piKernelBridge,
         skillManager = skillManager,
         stateRepository = piExtensionStateRepository,
@@ -192,7 +181,6 @@ class SunshineAppRuntime(
         settingsRepository = settingsRepository,
         piExtensionStateRepository = piExtensionStateRepository,
         appExtensionManager = sunshineAppExtensionManager,
-        alpineChromeController = alpineChromeController,
         termuxRuntimeOperations = TermuxRuntimeOperations(bashTool),
         diagnosticLogger = diagnosticLogger,
         toolExecutor = SunshineToolExecutor(
@@ -251,12 +239,6 @@ class SunshineAppRuntime(
         ProcessLifecycleOwner.get().lifecycle.addObserver(appForegroundTracker)
         appScope.launch {
             nativeModManager.initialize()
-        }
-        appScope.launch {
-            alpineRuntime.refreshApkRepositoriesForCurrentNetwork()
-        }
-        appScope.launch {
-            settingsRepository.migrateLegacyProvidersToPi()
         }
         appScope.launch {
             if (settingsRepository.settings.first().privacyPolicyAccepted) {

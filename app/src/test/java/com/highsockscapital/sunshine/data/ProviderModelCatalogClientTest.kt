@@ -7,6 +7,7 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+
 class ProviderModelCatalogClientTest {
     @Test
     fun thinkingCatalogKeyUsesOnlyLastModelIdSegment() {
@@ -116,17 +117,6 @@ class ProviderModelCatalogClientTest {
         assertEquals(listOf("gemini-new", "fallback-key"), result.models)
     }
 
-    @Test
-    fun modelsDevProviderAliasesMatchSunshineBuiltIns() {
-        assertEquals(
-            listOf("fireworks-ai"),
-            PiProviderCatalog.resolve("fireworks").modelsDevProviderIds(),
-        )
-        assertEquals(
-            listOf("kimi-for-coding"),
-            PiProviderCatalog.resolve("kimi-coding").modelsDevProviderIds(),
-        )
-    }
 
     @Test
     fun customOpenAiBaseUrlFetchesModelsFromConfiguredEndpoint() = runBlocking {
@@ -169,16 +159,16 @@ class ProviderModelCatalogClientTest {
         server.enqueue(
             MockResponse()
                 .addHeader("Content-Type", "application/json")
-                .setBody("""{"providers":{"openai":{"models":{"gpt-fallback":{"id":"gpt-fallback"}}}}}""")
+                .setBody("""{"providers":{"openrouter":{"models":{"router-fallback":{"id":"router-fallback"}}}}}""")
         )
         server.start()
 
         try {
             val result = ProviderModelCatalogClient.fetchModels(
                 LlmProviderConfig(
-                    providerId = "openai",
-                    name = "OpenAI",
-                    piProviderId = "openai",
+                    providerId = "openrouter",
+                    name = "OpenRouter",
+                    piProviderId = "openrouter",
                     apiKey = "invalid-key",
                     baseUrl = server.url("/v1").toString(),
                     modelId = "",
@@ -187,7 +177,7 @@ class ProviderModelCatalogClientTest {
                 modelsDevUrl = server.url("/catalog.json").toString(),
             )
 
-            assertEquals(listOf("gpt-fallback"), result.models)
+            assertEquals(listOf("router-fallback"), result.models)
             assertEquals(null, result.error)
             assertEquals("/v1/models", server.takeRequest().path)
             assertEquals("/catalog.json", server.takeRequest().path)

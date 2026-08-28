@@ -18,7 +18,6 @@ import com.highsockscapital.sunshine.data.AppUpdateManager
 import com.highsockscapital.sunshine.data.AutomaticModelPurpose
 import com.highsockscapital.sunshine.data.AgentModeAuthorizationMethod
 import com.highsockscapital.sunshine.data.AgentWorkspaceMode
-import com.highsockscapital.sunshine.data.AlpineEnvironmentVariable
 import com.highsockscapital.sunshine.data.AppLanguage
 import com.highsockscapital.sunshine.data.AppSettings
 import com.highsockscapital.sunshine.data.normalizeReasoningEffort
@@ -50,7 +49,6 @@ import com.highsockscapital.sunshine.data.normalizeLlmUserAgent
 import com.highsockscapital.sunshine.data.normalizeOldCommandHistoryRetentionHours
 import com.highsockscapital.sunshine.data.normalizeTavilyBaseUrl
 import com.highsockscapital.sunshine.data.OnboardingStarterPrompt
-import com.highsockscapital.sunshine.data.PackageProfileState
 import com.highsockscapital.sunshine.data.RootSetupIssue
 import com.highsockscapital.sunshine.data.RootSetupState
 import com.highsockscapital.sunshine.data.ScheduledTask
@@ -58,7 +56,6 @@ import com.highsockscapital.sunshine.data.ScheduledTaskCreator
 import com.highsockscapital.sunshine.data.ScheduledTaskSchedule
 import com.highsockscapital.sunshine.data.TermuxEnvironmentVariable
 import com.highsockscapital.sunshine.data.normalizeTermuxEnvironmentVariables
-import com.highsockscapital.sunshine.data.normalizeAlpineEnvironmentVariables
 import com.highsockscapital.sunshine.data.SessionFollowUpMode
 import com.highsockscapital.sunshine.data.SubagentManager
 import com.highsockscapital.sunshine.data.SubagentConfig
@@ -106,14 +103,12 @@ import com.highsockscapital.sunshine.data.resolveModelSettings
 import com.highsockscapital.sunshine.data.resolveStoredOrAutomaticModelKey
 import com.highsockscapital.sunshine.termux.TermuxSetupIssue
 import com.highsockscapital.sunshine.termux.TermuxSetupState
-import com.highsockscapital.sunshine.runtime.AlpineSetupProgress
-import com.highsockscapital.sunshine.runtime.AlpineTerminalLaunchSpec
-import com.highsockscapital.sunshine.runtime.AlpineSetupActivity
 import com.highsockscapital.sunshine.runtime.LocalRuntimeIssue
 import com.highsockscapital.sunshine.runtime.LocalRuntimeSetupState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -208,9 +203,7 @@ class SunshineViewModel(
     private var selectSessionJob: Job? = null
     private var providerAuthJob: Job? = null
     private var extensionSendHookJob: Job? = null
-    private var developerAlpineSetupPreviewJob: Job? = null
     private var piExtensionRefreshGeneration: Long = 0
-    private var didRefreshAlpineAfterSettingsLoad = false
 
     val uiState: StateFlow<SunshineUiState> = _uiState.asStateFlow()
     val transientMessages = _transientMessages.asSharedFlow()
@@ -264,11 +257,6 @@ class SunshineViewModel(
                     enabled = settings.autoCleanOldCommandHistory,
                     retentionHours = settings.oldCommandHistoryRetentionHours,
                 )
-                runtime.alpineRuntime.setEnvironmentVariables(settings.alpineEnvironmentVariables)
-                if (!didRefreshAlpineAfterSettingsLoad) {
-                    didRefreshAlpineAfterSettingsLoad = true
-                    refreshAlpineSetup(startPiIfReady = false)
-                }
                 if (!didEvaluateStartupUpdateCheck && settings.privacyPolicyAccepted) {
                     didEvaluateStartupUpdateCheck = true
                     maybeCheckForUpdates(settings)
@@ -406,11 +394,6 @@ class SunshineViewModel(
         viewModelScope.launch {
             agentModeController.displayState.collect { displayState ->
                 _uiState.update { current -> current.copy(agentModeDisplayState = displayState) }
-            }
-        }
-        viewModelScope.launch {
-            runtime.alpineChromeController.displayState.collect { displayState ->
-                _uiState.update { current -> current.copy(chromeDisplayState = displayState) }
             }
         }
         viewModelScope.launch {
@@ -557,15 +540,13 @@ class SunshineViewModel(
                 result = rootState.issue.name.lowercase(),
             )
             if (rootState.isReady) {
-                val settings = _uiState.value.settings
-                val updatedSettings = settings.withRuntimeEnabled(LocalRuntimeId.Termux).copy(
-                    agentModeAuthorizationEnabled = true,
-                    agentModeAuthorizationMethod = AgentModeAuthorizationMethod.Root,
-                    termuxSetupCompleted = true,
-                )
-                settingsRepository.updateSettings(
-                    updatedSettings
-                )
+                val updatedSettings = settingsRepository.updateSettings { current ->
+                    current.withRuntimeEnabled(LocalRuntimeId.Termux).copy(
+                        agentModeAuthorizationEnabled = true,
+                        agentModeAuthorizationMethod = AgentModeAuthorizationMethod.Root,
+                        termuxSetupCompleted = true,
+                    )
+                }
                 agentModeController.refreshAuthorization(updatedSettings)
             }
             val inspectedSetupState = withContext(Dispatchers.IO) { bashTool.inspectSetup() }
@@ -612,11 +593,17 @@ class SunshineViewModel(
 
     private suspend fun rememberTermuxSetupCompleted(setupState: TermuxSetupState): TermuxSetupState {
         val settings = _uiState.value.settings
-        if (setupState.isReady && !settings.termuxSetupCompleted) {
-            settingsRepository.updateSettings(settings.withRuntimeEnabled(LocalRuntimeId.Termux))
+        // Read the stored flag directly instead of relying on UI state, which can
+        // still hold defaults before the first settings emission. Writing the full
+        // settings object from defaults here would wipe persisted values such as
+        // the custom system prompt.
+        val storedTermuxSetupCompleted = settingsRepository.isTermuxSetupCompleted()
+        if (setupState.isReady && !storedTermuxSetupCompleted) {
+            settingsRepository.markTermuxSetupCompleted()
         }
         return setupState.copy(
             previouslyConfigured = setupState.previouslyConfigured ||
+                storedTermuxSetupCompleted ||
                 settings.termuxSetupCompleted ||
                 setupState.isReady,
         )
@@ -647,237 +634,9 @@ class SunshineViewModel(
         bashTool.setEnvironmentVariables(snapshot.settings.termuxEnvironmentVariables)
     }
 
-    fun refreshAlpineSetup(startPiIfReady: Boolean = false) {
-        viewModelScope.launch {
-            val setupState = withContext(Dispatchers.IO) {
-                runtime.alpineRuntime.inspectSetup()
-            }
-            _uiState.update { current ->
-                current.copy(
-                    alpineSetupState = setupState,
-                    piCoreSetupState = if (setupState.isReady) {
-                        current.piCoreSetupState.copy(
-                            isChecking = false,
-                            activity = PiCoreSetupActivity.None,
-                            bytesPerSecond = 0L,
-                        )
-                    } else {
-                        current.piCoreSetupState
-                    },
-                )
-            }
-            if (setupState.isReady) {
-                val storedSettings = _uiState.value.settings
-                val settings = storedSettings.copy(
-                    alpineSetupCompleted = true,
-                    enabledRuntimeIds = storedSettings.enabledRuntimeIds + LocalRuntimeId.Alpine,
-                )
-                if (settings != storedSettings) settingsRepository.updateSettings(settings)
-                val verifiedProfiles = withContext(Dispatchers.IO) {
-                    settings.alpinePackageProfiles.mapValues { (profileId, profileState) ->
-                        if (
-                            profileState.installed &&
-                            !runtime.alpineRuntime.isPackageProfileInstalled(profileId)
-                        ) {
-                            profileState.copy(
-                                installed = false,
-                                installedAtMillis = 0L,
-                                lastError = "",
-                            )
-                        } else {
-                            profileState
-                        }
-                    }
-                }
-                if (verifiedProfiles != settings.alpinePackageProfiles) {
-                    settingsRepository.updateSettings(
-                        settings.copy(alpinePackageProfiles = verifiedProfiles)
-                    )
-                    if (verifiedProfiles["chrome"]?.installed != true) {
-                        _uiState.update { current ->
-                            current.copy(
-                                draftChromeEnabled = false,
-                                sessions = current.sessions.map { it.copy(chromeEnabled = false) },
-                            )
-                        }
-                        chatStateStore.updateAndFlush { persisted ->
-                            persisted.copy(
-                                sessions = persisted.sessions.map { it.copy(chromeEnabled = false) },
-                            )
-                        }
-                    }
-                }
-                if (startPiIfReady) {
-                    refreshPiCoreSetup()
-                } else {
-                    viewModelScope.launch { syncPiDiscoveredSkills() }
-                }
-            } else {
-                _uiState.update {
-                    it.copy(
-                        piCoreSetupState = PiCoreSetupState(
-                            detail = "Initialize Alpine before starting the agent runtime.",
-                        )
-                    )
-                }
-            }
-        }
-    }
 
-    fun initializeAlpineRuntime(makeDefault: Boolean = true) {
-        viewModelScope.launch {
-            initializeAlpineRuntimeAfterReset(makeDefault)
-        }
-    }
 
-    fun retryAlpineRuntimeSetup(makeDefault: Boolean = true) {
-        viewModelScope.launch {
-            _uiState.update { current ->
-                current.copy(
-                    alpineSetupState = LocalRuntimeSetupState(
-                        runtimeId = LocalRuntimeId.Alpine,
-                        issue = LocalRuntimeIssue.NotInstalled,
-                    ),
-                    piCoreSetupState = PiCoreSetupState(
-                        isChecking = true,
-                        phase = PiCoreSetupPhase.CheckingAlpine,
-                        output = "Starting Alpine setup...\n",
-                    ),
-                )
-            }
-            val resetFailure = try {
-                withContext(Dispatchers.IO) {
-                    runtime.alpineChromeController.stop()
-                    runtime.piKernelBridge.stop()
-                    runtime.alpineRuntime.reset()
-                }
-                null
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                error
-            }
-            if (resetFailure != null) {
-                val detail = resetFailure.userFacingMessage()
-                _uiState.update { current ->
-                    current.copy(
-                        alpineSetupState = LocalRuntimeSetupState(
-                            runtimeId = LocalRuntimeId.Alpine,
-                            issue = LocalRuntimeIssue.Failed,
-                            detail = detail,
-                        ),
-                        piCoreSetupState = current.piCoreSetupState.copy(
-                            isChecking = false,
-                            phase = PiCoreSetupPhase.Failed,
-                            failedAtPhase = PiCoreSetupPhase.CheckingAlpine,
-                            detail = detail,
-                            output = appendSetupOutput(
-                                current.piCoreSetupState.output,
-                                "Setup failed: $detail\n",
-                            ),
-                        ),
-                    )
-                }
-                emitTransientMessage(UiText.Raw(detail))
-                return@launch
-            }
-            val settings = _uiState.value.settings
-            val remainingRuntimeIds = settings.enabledRuntimeIds - LocalRuntimeId.Alpine
-            settingsRepository.updateSettings(
-                settings.copy(
-                    alpineSetupCompleted = false,
-                    alpinePackageProfiles = emptyMap(),
-                    enabledRuntimeIds = remainingRuntimeIds,
-                    defaultRuntimeId = if (settings.defaultRuntimeId == LocalRuntimeId.Alpine) {
-                        remainingRuntimeIds.firstOrNull()
-                    } else {
-                        settings.defaultRuntimeId
-                    },
-                )
-            )
-            _uiState.update { current ->
-                current.copy(
-                    alpinePackageInstallProgress = emptyMap(),
-                    draftChromeEnabled = false,
-                    sessions = current.sessions.map { it.copy(chromeEnabled = false) },
-                )
-            }
-            chatStateStore.updateAndFlush { persisted ->
-                persisted.copy(
-                    sessions = persisted.sessions.map { it.copy(chromeEnabled = false) },
-                )
-            }
-            initializeAlpineRuntimeAfterReset(makeDefault)
-        }
-    }
 
-    private suspend fun initializeAlpineRuntimeAfterReset(makeDefault: Boolean) {
-        _uiState.update { current ->
-            current.copy(
-                piCoreSetupState = PiCoreSetupState(
-                    isChecking = true,
-                    phase = PiCoreSetupPhase.CheckingAlpine,
-                    output = "Starting Alpine setup...\n",
-                )
-            )
-        }
-        val setupState = withContext(Dispatchers.IO) {
-            runtime.alpineRuntime.initialize { progress ->
-                applyPiCoreSetupUpdate(
-                    PiCoreSetupUpdate(
-                        phase = PiCoreSetupPhase.CheckingAlpine,
-                        activity = when (progress.activity) {
-                            AlpineSetupActivity.Extracting -> PiCoreSetupActivity.Extracting
-                            AlpineSetupActivity.Downloading -> PiCoreSetupActivity.Downloading
-                            AlpineSetupActivity.Installing -> PiCoreSetupActivity.None
-                            AlpineSetupActivity.None -> PiCoreSetupActivity.None
-                        },
-                        bytesPerSecond = progress.bytesPerSecond,
-                        output = progress.output,
-                    )
-                )
-            }
-        }
-        if (setupState.isReady) {
-            settingsRepository.updateSettings(
-                _uiState.value.settings.withRuntimeEnabled(
-                    runtimeId = LocalRuntimeId.Alpine,
-                    makeDefault = makeDefault,
-                )
-            )
-        }
-        _uiState.update { current -> current.copy(alpineSetupState = setupState) }
-        if (setupState.isReady) {
-            _uiState.update { current ->
-                current.copy(
-                    piCoreSetupState = current.piCoreSetupState.copy(
-                        isChecking = false,
-                        activity = PiCoreSetupActivity.None,
-                        bytesPerSecond = 0L,
-                    ),
-                )
-            }
-            refreshPiCoreSetup()
-        } else {
-            _uiState.update { current ->
-                current.copy(
-                    piCoreSetupState = current.piCoreSetupState.copy(
-                        isChecking = false,
-                        phase = PiCoreSetupPhase.Failed,
-                        failedAtPhase = PiCoreSetupPhase.CheckingAlpine,
-                        detail = setupState.detail,
-                        activity = PiCoreSetupActivity.None,
-                        bytesPerSecond = 0L,
-                        output = appendSetupOutput(
-                            current.piCoreSetupState.output,
-                            "Setup failed: ${setupState.detail}\n",
-                        ),
-                    )
-                )
-            }
-        }
-        emitTransientMessage(UiText.Raw(setupState.detail.ifBlank { "Alpine runtime status refreshed." }))
-    }
 
     private suspend fun refreshPiCoreSetup() {
         if (_uiState.value.piCoreSetupState.isChecking) return
@@ -885,7 +644,7 @@ class SunshineViewModel(
             it.copy(
                 piCoreSetupState = PiCoreSetupState(
                     isChecking = true,
-                    phase = PiCoreSetupPhase.CheckingAlpine,
+                    phase = PiCoreSetupPhase.CheckingRuntime,
                     output = it.piCoreSetupState.output.ifBlank { "Starting agent runtime setup...\n" },
                 )
             )
@@ -941,11 +700,8 @@ class SunshineViewModel(
                     val guestFilePath = item.optString("file_path").trim()
                     val guestBaseDir = item.optString("base_dir").trim()
                     if (guestFilePath.isBlank() || guestBaseDir.isBlank()) continue
-                    val hostFile = runtime.alpineRuntime.resolveWorkspaceHostPath(guestFilePath)?.hostFile
-                        ?: runtime.alpineRuntime.resolveGuestPath(guestFilePath)
-                    val hostRoot = runtime.alpineRuntime.resolveWorkspaceHostPath(guestBaseDir)?.hostFile
-                        ?: runtime.alpineRuntime.resolveGuestPath(guestBaseDir)
-                    if (!hostFile.isFile || !hostRoot.isDirectory) continue
+                    val hostFile = cacheTermuxGuestSkillFile(guestFilePath) ?: continue
+                    val hostRoot = hostFile.parentFile ?: continue
                     add(
                         PiDiscoveredSkillSource(
                             guestFilePath = guestFilePath,
@@ -960,137 +716,19 @@ class SunshineViewModel(
         }
     }
 
-    fun resetAlpineRuntime() {
-        viewModelScope.launch {
-            val setupState = withContext(Dispatchers.IO) {
-                runtime.alpineChromeController.stop()
-                runtime.alpineRuntime.reset()
-            }
-            val settings = _uiState.value.settings
-            settingsRepository.updateSettings(
-                settings.copy(
-                    enabledRuntimeIds = settings.enabledRuntimeIds - LocalRuntimeId.Alpine,
-                    defaultRuntimeId = if (settings.defaultRuntimeId == LocalRuntimeId.Alpine) {
-                        (settings.enabledRuntimeIds - LocalRuntimeId.Alpine).firstOrNull()
-                    } else {
-                        settings.defaultRuntimeId
-                    },
-                    alpineSetupCompleted = false,
-                    alpinePackageProfiles = emptyMap(),
-                )
-            )
-            _uiState.update { current ->
-                current.copy(
-                    alpineSetupState = setupState,
-                    alpinePackageInstallProgress = emptyMap(),
-                    draftChromeEnabled = false,
-                    sessions = current.sessions.map { it.copy(chromeEnabled = false) },
-                )
-            }
-            chatStateStore.updateAndFlush { persisted ->
-                persisted.copy(
-                    sessions = persisted.sessions.map { it.copy(chromeEnabled = false) },
-                )
-            }
-        }
-    }
 
-    fun installAlpinePackageProfile(profileId: String) {
-        if (_uiState.value.alpinePackageInstallProgress.containsKey(profileId)) return
-        viewModelScope.launch {
-            _uiState.update { current ->
-                current.copy(
-                    alpinePackageInstallProgress = current.alpinePackageInstallProgress +
-                        (
-                            profileId to AlpineSetupProgress(
-                                activity = AlpineSetupActivity.Downloading,
-                            )
-                            ),
-                )
-            }
-            val installState = try {
-                withContext(Dispatchers.IO) {
-                    runtime.alpineRuntime.installPackageProfile(profileId) { progress ->
-                        _uiState.update { current ->
-                            val previous = current.alpinePackageInstallProgress[profileId]
-                            val merged = progress.copy(
-                                bytesPerSecond = progress.bytesPerSecond.takeIf { it > 0L }
-                                    ?: previous?.bytesPerSecond
-                                    ?: 0L,
-                                progressPercent = progress.progressPercent
-                                    ?: previous?.progressPercent,
-                            )
-                            current.copy(
-                                alpinePackageInstallProgress =
-                                    current.alpinePackageInstallProgress + (profileId to merged),
-                            )
-                        }
-                    }
-                }
-            } catch (throwable: Throwable) {
-                if (throwable is CancellationException) throw throwable
-                LocalRuntimeSetupState(
-                    runtimeId = LocalRuntimeId.Alpine,
-                    issue = LocalRuntimeIssue.Failed,
-                    detail = throwable.userFacingMessage(),
-                )
-            } finally {
-                _uiState.update { current ->
-                    current.copy(
-                        alpinePackageInstallProgress =
-                            current.alpinePackageInstallProgress - profileId,
-                    )
-                }
-            }
-            val profileState = if (installState.isReady) {
-                PackageProfileState(
-                    profileId = profileId,
-                    installed = true,
-                    installedAtMillis = System.currentTimeMillis(),
-                    lastError = "",
-                )
-            } else {
-                PackageProfileState(
-                    profileId = profileId,
-                    installed = false,
-                    installedAtMillis = 0L,
-                    lastError = installState.detail.ifBlank { "Install failed." },
-                )
-            }
-            val settings = _uiState.value.settings
-            settingsRepository.updateSettings(
-                settings.copy(
-                    alpinePackageProfiles = settings.alpinePackageProfiles + (profileId to profileState),
-                )
-            )
-            val runtimeState = withContext(Dispatchers.IO) {
-                runtime.alpineRuntime.inspectSetup()
-            }
-            _uiState.update { current -> current.copy(alpineSetupState = runtimeState) }
-            emitTransientMessage(UiText.Raw(installState.detail.ifBlank { "Alpine package profile updated." }))
-        }
-    }
 
-    suspend fun createAlpineTerminalLaunchSpec(): Result<AlpineTerminalLaunchSpec> =
-        withContext(Dispatchers.IO) {
-            runCatching { runtime.alpineRuntime.createTerminalLaunchSpec() }
-        }
 
-    suspend fun startAlpineChrome(): Result<Unit> =
-        runtime.alpineChromeController.startBrowser()
 
-    suspend fun shouldShowAlpineChromeKeyboard(x: Int, y: Int): Result<Boolean> =
-        runtime.alpineChromeController.shouldShowKeyboardAfterClick(x, y)
 
     fun setDefaultRuntime(runtimeId: LocalRuntimeId) {
         viewModelScope.launch {
-            val settings = _uiState.value.settings
-            settingsRepository.updateSettings(
-                settings.copy(
-                    enabledRuntimeIds = settings.enabledRuntimeIds + runtimeId,
+            settingsRepository.updateSettings { current ->
+                current.copy(
+                    enabledRuntimeIds = current.enabledRuntimeIds + runtimeId,
                     defaultRuntimeId = runtimeId,
                 )
-            )
+            }
         }
     }
 
@@ -1321,110 +959,6 @@ class SunshineViewModel(
         }
     }
 
-    fun openDeveloperAlpineSetupPreview() {
-        developerAlpineSetupPreviewJob?.cancel()
-        _uiState.update { current ->
-            current.copy(
-                currentScreen = AppScreen.Onboarding,
-                isOnboardingReplay = true,
-                onboardingStep = OnboardingStep.AlpineSetup,
-                onboardingReturnScreen = AppScreen.Settings,
-                developerAlpineSetupPreviewState = PiCoreSetupState(),
-            )
-        }
-        restartDeveloperAlpineSetupPreview()
-    }
-
-    fun restartDeveloperAlpineSetupPreview() {
-        developerAlpineSetupPreviewJob?.cancel()
-        _uiState.update { current ->
-            if (current.developerAlpineSetupPreviewState == null) {
-                current
-            } else {
-                current.copy(developerAlpineSetupPreviewState = PiCoreSetupState())
-            }
-        }
-        developerAlpineSetupPreviewJob = viewModelScope.launch {
-            fun update(
-                phase: PiCoreSetupPhase,
-                activity: PiCoreSetupActivity = PiCoreSetupActivity.None,
-                bytesPerSecond: Long = 0L,
-                output: String = "",
-            ) {
-                _uiState.update { current ->
-                    val preview = current.developerAlpineSetupPreviewState ?: return@update current
-                    current.copy(
-                        developerAlpineSetupPreviewState = preview.copy(
-                            isChecking = phase != PiCoreSetupPhase.Ready && phase != PiCoreSetupPhase.Failed,
-                            isReady = phase == PiCoreSetupPhase.Ready,
-                            phase = phase,
-                            activity = activity,
-                            bytesPerSecond = bytesPerSecond,
-                            output = appendSetupOutput(preview.output, output),
-                            nodeVersion = if (phase == PiCoreSetupPhase.Ready) "22.21.1" else preview.nodeVersion,
-                            bridgeVersion = if (phase == PiCoreSetupPhase.Ready) "2.0.0-alpha.0" else preview.bridgeVersion,
-                        )
-                    )
-                }
-            }
-
-            update(PiCoreSetupPhase.CheckingAlpine, output = "Starting Alpine setup preview...\n")
-            delay(700L)
-            update(
-                phase = PiCoreSetupPhase.CheckingAlpine,
-                activity = PiCoreSetupActivity.Extracting,
-                bytesPerSecond = 18L * 1024L * 1024L,
-                output = "Preparing Alpine runtime files...\n",
-            )
-            delay(900L)
-            val extractionEntries = listOf(
-                "bin/busybox",
-                "etc/alpine-release",
-                "usr/lib/libcrypto.so.3",
-                "usr/bin/env",
-                "var/lib/apk/world",
-            )
-            extractionEntries.forEachIndexed { index, path ->
-                update(
-                    phase = PiCoreSetupPhase.CheckingAlpine,
-                    activity = PiCoreSetupActivity.Extracting,
-                    bytesPerSecond = (18L + index * 3L) * 1024L * 1024L,
-                    output = "Extracting $path\n",
-                )
-                delay(1_600L)
-            }
-            update(
-                phase = PiCoreSetupPhase.CheckingNode,
-                output = "Alpine root filesystem ready.\nChecking node --version...\n",
-            )
-            delay(1_000L)
-            val apkLines = listOf(
-                "\$ apk add --no-cache --no-chown nodejs npm",
-                "fetch https://dl-cdn.alpinelinux.org/alpine/v3.23/main/aarch64/APKINDEX.tar.gz",
-                "(1/8) Installing ca-certificates",
-                "(2/8) Installing libuv",
-                "(7/8) Installing nodejs",
-                "(8/8) Installing npm",
-                "OK: 94 MiB in 32 packages",
-            )
-            apkLines.forEachIndexed { index, line ->
-                update(
-                    phase = PiCoreSetupPhase.InstallingNode,
-                    activity = PiCoreSetupActivity.Downloading,
-                    bytesPerSecond = (2_400L + index * 370L) * 1024L,
-                    output = "$line\n",
-                )
-                delay(1_400L)
-            }
-            update(PiCoreSetupPhase.PreparingBridge, output = "Preparing the AI engine bridge...\n")
-            delay(900L)
-            update(PiCoreSetupPhase.StartingBridge, output = "Starting node bridge.mjs...\n")
-            delay(900L)
-            update(PiCoreSetupPhase.VerifyingBridge, output = "Verifying bridge response...\n")
-            delay(900L)
-            update(PiCoreSetupPhase.Ready, output = "AI engine setup complete.\n")
-        }
-    }
 
     fun resumeOnboarding() {
         _uiState.update { current ->
@@ -1438,17 +972,30 @@ class SunshineViewModel(
     }
 
     fun closeOnboarding() {
-        developerAlpineSetupPreviewJob?.cancel()
-        developerAlpineSetupPreviewJob = null
         _uiState.update { current ->
             current.copy(
                 currentScreen = current.onboardingReturnScreen,
                 isOnboardingReplay = false,
                 onboardingStep = OnboardingStep.Landing,
                 onboardingReturnScreen = AppScreen.Chat,
-                developerAlpineSetupPreviewState = null,
             )
         }
+    }
+
+    /** Copies a single discovered-skill source file from Termux storage into app-private cache. */
+    private suspend fun cacheTermuxGuestSkillFile(guestFilePath: String): java.io.File? {
+        val guestFiles = runtime.termuxGuestFiles
+        return runCatching {
+            if (!guestFiles.exists(guestFilePath)) return null
+            val safeName = guestFilePath.trim('/').replace('/', '_')
+            val cacheFile = java.io.File(
+                java.io.File(getApplication<Application>().cacheDir, "termux-skills"),
+                safeName,
+            )
+            cacheFile.parentFile?.mkdirs()
+            cacheFile.writeBytes(guestFiles.readFileBytes(guestFilePath))
+            cacheFile
+        }.getOrNull()
     }
 
     private fun applyPiCoreSetupUpdate(update: PiCoreSetupUpdate) {
@@ -1499,9 +1046,10 @@ class SunshineViewModel(
             val enabledConfig = config.copy(isEnabled = true)
             settingsRepository.upsertProviderConfig(enabledConfig)
             settingsRepository.setProviderEnabled(enabledConfig.id, true)
-            val updatedSettings = _uiState.value.settings.withExplicitDefaultChatModel(enabledConfig)
+            val updatedSettings = settingsRepository.updateSettings {
+                it.withExplicitDefaultChatModel(enabledConfig)
+            }
             val defaultModelKey = updatedSettings.defaultChatModelKey
-            settingsRepository.updateSettings(updatedSettings)
             settingsRepository.updateOnboardingSeenVersion(CurrentOnboardingVersion)
             _uiState.update { current ->
                 current.copy(
@@ -1554,9 +1102,9 @@ class SunshineViewModel(
 
     fun dismissTermuxSetupNotice() {
         viewModelScope.launch {
-            settingsRepository.updateSettings(
-                _uiState.value.settings.copy(termuxSetupNoticeDismissed = true)
-            )
+            settingsRepository.updateSettings {
+                it.copy(termuxSetupNoticeDismissed = true)
+            }
         }
     }
 
@@ -1582,12 +1130,12 @@ class SunshineViewModel(
         method: AgentModeAuthorizationMethod,
     ) {
         viewModelScope.launch {
-            settingsRepository.updateSettings(
-                _uiState.value.settings.copy(
+            settingsRepository.updateSettings {
+                it.copy(
                     agentModeAuthorizationEnabled = enabled,
                     agentModeAuthorizationMethod = method,
                 )
-            )
+            }
         }
     }
 
@@ -1751,10 +1299,14 @@ class SunshineViewModel(
             if (current.currentSessionId == DraftSessionId) {
                 current.copy(draftSelectedModelKey = defaultModelKey)
             } else {
-                sessionToPersist = current.currentSessionId to defaultModelKey
+                // Respect a model the user explicitly picked for this session;
+                // only fall back to the default when none was stored.
                 current.copy(
                     sessions = current.sessions.map { session ->
-                        if (session.id == current.currentSessionId) {
+                        if (session.id == current.currentSessionId &&
+                            session.selectedModelKey.isBlank()
+                        ) {
+                            sessionToPersist = session.id to defaultModelKey
                             session.copy(selectedModelKey = defaultModelKey)
                         } else {
                             session
@@ -2499,8 +2051,11 @@ class SunshineViewModel(
                 preferredModelKey = resolvedDefaultChatModelKey,
                 fallbackModelKey = resolvedDefaultChatModelKey,
             )
-            settingsRepository.updateSettings(
-                currentState.settings.copy(
+            // NonCancellable: closing the app can tear down the ViewModel and
+            // cancel this coroutine before DataStore persists anything.
+            withContext(NonCancellable) {
+            val updatedSettings = settingsRepository.updateSettings { stored ->
+                stored.copy(
                     piProviderId = selectedModelSettings.piProviderId,
                     providerConfigId = selectedModelSettings.providerConfigId,
                     providerAuthMethod = selectedModelSettings.providerAuthMethod,
@@ -2538,7 +2093,11 @@ class SunshineViewModel(
                     autoCompactEnabled = autoCompactEnabled,
                     autoCompactThresholdPercent = autoCompactThresholdPercent.coerceIn(50, 95),
                 )
-            )
+            }
+            // Mirror the persisted settings into UI state immediately so other
+            // writers snapshot fresh values instead of stale defaults.
+            _uiState.update { current -> current.copy(settings = updatedSettings) }
+            }
         }
     }
 
@@ -2555,12 +2114,17 @@ class SunshineViewModel(
                         apiKeyOverride = config.apiKeyOverride.trim(),
                     )
                 }
-            settingsRepository.updateSettings(
-                _uiState.value.settings.copy(
-                    subagentsSharedOpenRouterApiKey = sharedOpenRouterApiKey.trim(),
-                    subagentConfigs = normalizedConfigs,
-                )
-            )
+            withContext(NonCancellable) {
+                val updatedSettings = settingsRepository.updateSettings { stored ->
+                    stored.copy(
+                        subagentsSharedOpenRouterApiKey = sharedOpenRouterApiKey.trim(),
+                        subagentConfigs = normalizedConfigs,
+                    )
+                }
+                _uiState.update { current ->
+                    current.copy(settings = updatedSettings)
+                }
+            }
         }
     }
 
@@ -2590,11 +2154,24 @@ class SunshineViewModel(
     private fun syncBuiltInSubagents(configs: Map<String, SubagentConfig>) {
         viewModelScope.launch {
             runCatching {
-                val agentsDirectory = runtime.alpineRuntime.resolveGuestPath(BuiltInAgentsGuestDirectory)
+                val stagingRoot = java.io.File(
+                    getApplication<Application>().filesDir,
+                    "subagent-mirror",
+                )
                 SubagentManager(
                     homeDirectory = "",
-                    globalAgentsDirectoryOverride = agentsDirectory,
+                    globalAgentsDirectoryOverride = stagingRoot,
                 ).syncBuiltIns(configs)
+                runtime.termuxGuestFiles.ensureDirectory(BuiltInAgentsGuestDirectory)
+                stagingRoot.walkTopDown()
+                    .filter { it.isFile }
+                    .forEach { file ->
+                        val relative = file.relativeToOrNull(stagingRoot)?.invariantSeparatorsPath ?: return@forEach
+                        runtime.termuxGuestFiles.writeFileBytes(
+                            "$BuiltInAgentsGuestDirectory/$relative",
+                            file.readBytes(),
+                        )
+                    }
             }.onFailure { throwable ->
                 diagnosticLogger.exception(
                     category = "pi_bridge",
@@ -2660,9 +2237,9 @@ class SunshineViewModel(
 
     fun setReasoningEffort(effort: String) {
         viewModelScope.launch {
-            settingsRepository.updateSettings(
-                _uiState.value.settings.copy(reasoningEffort = normalizeReasoningEffort(effort)),
-            )
+            settingsRepository.updateSettings {
+                it.copy(reasoningEffort = normalizeReasoningEffort(effort))
+            }
         }
     }
 
@@ -2695,6 +2272,17 @@ class SunshineViewModel(
                     null
                 } else {
                     session.copy(selectedModelKey = modelKey)
+                }
+            }
+        }
+        if (didUpdate) {
+            // Persist the choice as the default so it survives app restarts
+            // for new chats and drafts as well.
+            viewModelScope.launch {
+                withContext(NonCancellable) {
+                    settingsRepository.updateSettings { stored ->
+                        stored.copy(defaultChatModelKey = modelKey)
+                    }
                 }
             }
         }
@@ -3468,7 +3056,7 @@ class SunshineViewModel(
             } else {
                 AgentWorkspaceMode.Shared
             }
-            settingsRepository.updateSettings(settings.copy(agentWorkspaceMode = mode))
+            settingsRepository.updateSettings { it.copy(agentWorkspaceMode = mode) }
         }
     }
 
@@ -3642,8 +3230,7 @@ class SunshineViewModel(
         var sessionIdForPersistence: String? = null
         _uiState.update { current ->
             val resolvedSelected = selected &&
-                current.settings.alpinePackageProfiles["chrome"]?.installed == true &&
-                current.alpineSetupState.isReady
+                false
             if (current.currentSessionId == DraftSessionId) {
                 if (current.draftChromeEnabled == resolvedSelected) {
                     current
@@ -3671,8 +3258,7 @@ class SunshineViewModel(
         sessionIdForPersistence?.takeIf { didUpdate }?.let { sessionId ->
             persistSessionMutation(sessionId) { session ->
                 val resolvedSelected = selected &&
-                    _uiState.value.settings.alpinePackageProfiles["chrome"]?.installed == true &&
-                    _uiState.value.alpineSetupState.isReady
+                    false
                 if (session.chromeEnabled == resolvedSelected) null
                 else session.copy(chromeEnabled = resolvedSelected)
             }
@@ -4073,8 +3659,8 @@ class SunshineViewModel(
             )
 
         "settings.patch" -> {
-            val current = _uiState.value.settings
-            var updated = current
+            val updated = settingsRepository.updateSettings { current ->
+                var updated = current
             if (args.has("system_prompt")) {
                 updated = updated.copy(systemPrompt = args.optString("system_prompt"))
             }
@@ -4125,7 +3711,8 @@ class SunshineViewModel(
                     tavilyBaseUrl = normalizeTavilyBaseUrl(args.optString("tavily_base_url"))
                 )
             }
-            settingsRepository.updateSettings(updated)
+                updated
+            }
             JSONObject().put("settings", updated.toJson())
         }
 
@@ -6472,30 +6059,6 @@ class SunshineViewModel(
         )
         put("enabledRuntimeIds", JSONArray().apply { enabledRuntimeIds.forEach { put(it.storageValue) } })
         put("defaultRuntimeId", defaultRuntimeId?.storageValue ?: JSONObject.NULL)
-        put("alpineSetupCompleted", alpineSetupCompleted)
-        put(
-            "alpinePackageProfiles",
-            JSONArray().apply {
-                alpinePackageProfiles.values.forEach { profile ->
-                    put(
-                        JSONObject().apply {
-                            put("profileId", profile.profileId)
-                            put("installed", profile.installed)
-                            put("installedAtMillis", profile.installedAtMillis)
-                            put("lastError", profile.lastError)
-                        }
-                    )
-                }
-            },
-        )
-        put(
-            "alpineEnvironmentVariables",
-            JSONArray().apply {
-                alpineEnvironmentVariables.forEach { variable ->
-                    put(JSONObject().put("name", variable.name).put("value", variable.value))
-                }
-            },
-        )
         put("autoCleanOldCommandHistory", autoCleanOldCommandHistory)
         put("oldCommandHistoryRetentionHours", oldCommandHistoryRetentionHours)
         put("agentModeAuthorizationEnabled", agentModeAuthorizationEnabled)
@@ -6518,10 +6081,7 @@ class SunshineViewModel(
         val defaults = AppSettings()
         val importedBaseUrl = json.optString("baseUrl", defaults.baseUrl)
         val importedPiProviderId = json.optString("piProviderId").trim().ifBlank {
-            com.highsockscapital.sunshine.data.inferLegacyPiProviderId(
-                json.optString("provider"),
-                importedBaseUrl,
-            )
+            com.highsockscapital.sunshine.data.inferPiProviderIdFromBaseUrl(importedBaseUrl)
         }
         return AppSettings(
             piProviderId = importedPiProviderId,
@@ -6586,16 +6146,6 @@ class SunshineViewModel(
             ),
             enabledRuntimeIds = parseImportedRuntimeIds(json.optJSONArray("enabledRuntimeIds")),
             defaultRuntimeId = LocalRuntimeId.fromStorage(json.optString("defaultRuntimeId")),
-            alpineSetupCompleted = json.optBoolean(
-                "alpineSetupCompleted",
-                defaults.alpineSetupCompleted,
-            ),
-            alpinePackageProfiles = parseImportedPackageProfileStates(
-                json.optJSONArray("alpinePackageProfiles")
-            ),
-            alpineEnvironmentVariables = parseImportedAlpineEnvironmentVariables(
-                json.optJSONArray("alpineEnvironmentVariables")
-            ),
             agentModeAuthorizationEnabled = json.optBoolean(
                 "agentModeAuthorizationEnabled",
                 defaults.agentModeAuthorizationEnabled,
@@ -6664,24 +6214,6 @@ class SunshineViewModel(
         )
     }
 
-    private fun parseImportedAlpineEnvironmentVariables(
-        array: JSONArray?,
-    ): List<AlpineEnvironmentVariable> {
-        if (array == null) return emptyList()
-        return normalizeAlpineEnvironmentVariables(
-            buildList {
-                for (index in 0 until array.length()) {
-                    val item = array.optJSONObject(index) ?: continue
-                    add(
-                        AlpineEnvironmentVariable(
-                            name = item.optString("name"),
-                            value = item.optString("value"),
-                        )
-                    )
-                }
-            }
-        )
-    }
 
     private fun parseImportedRuntimeIds(array: JSONArray?): Set<LocalRuntimeId> {
         if (array == null) return emptySet()
@@ -6692,27 +6224,6 @@ class SunshineViewModel(
         }
     }
 
-    private fun parseImportedPackageProfileStates(
-        array: JSONArray?,
-    ): Map<String, PackageProfileState> {
-        if (array == null) return emptyMap()
-        return buildMap {
-            for (index in 0 until array.length()) {
-                val item = array.optJSONObject(index) ?: continue
-                val profileId = item.optString("profileId").trim()
-                if (profileId.isBlank()) continue
-                put(
-                    profileId,
-                    PackageProfileState(
-                        profileId = profileId,
-                        installed = item.optBoolean("installed", false),
-                        installedAtMillis = item.optLong("installedAtMillis", 0L),
-                        lastError = item.optString("lastError"),
-                    )
-                )
-            }
-        }
-    }
 
     private fun emitTransientMessage(message: UiText) {
         _transientMessages.tryEmit(message)
@@ -6809,7 +6320,6 @@ private fun AppSettings.withRuntimeEnabled(
     val enabled = enabledRuntimeIds + runtimeId
     return copy(
         termuxSetupCompleted = termuxSetupCompleted || runtimeId == LocalRuntimeId.Termux,
-        alpineSetupCompleted = alpineSetupCompleted || runtimeId == LocalRuntimeId.Alpine,
         enabledRuntimeIds = enabled,
         defaultRuntimeId = if (makeDefault) runtimeId else defaultRuntimeId,
     )

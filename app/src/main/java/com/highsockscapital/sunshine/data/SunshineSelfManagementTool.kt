@@ -113,7 +113,7 @@ class SunshineSelfManagementTool(
         ),
         buildSunshineToolDefinition(
             name = "sunshine_runtime_manage",
-            description = "Read or switch the current chat session runtime. The switch applies to the next model call and preserves independent Alpine and Termux workspaces.",
+            description = "Read or switch the current chat session runtime. The switch applies to the next model call.",
             properties = JSONObject().apply {
                 put(
                     "action",
@@ -126,7 +126,7 @@ class SunshineSelfManagementTool(
                     "runtime",
                     JSONObject().apply {
                         put("type", "string")
-                        put("enum", JSONArray(listOf("alpine", "termux")))
+                        put("enum", JSONArray(listOf("termux")))
                     },
                 )
             },
@@ -295,8 +295,9 @@ class SunshineSelfManagementTool(
         val arguments = parseArguments(argumentsJson) ?: return invalidJson()
         val category = arguments.optString("category").trim().lowercase(Locale.US)
         val patch = arguments.optJSONObject("settings") ?: return failure("settings must be an object.")
-        val current = settingsRepository.settings.first()
-        val updated = when (category) {
+        var unsupportedCategory: String? = null
+        val updated = settingsRepository.updateSettings { current ->
+            when (category) {
             "general" -> current.copy(
                 language = if (patch.hasAny("language", "app_language")) {
                     AppLanguage.fromStorage(patch.optStringAny("language", "app_language"), current.language)
@@ -389,9 +390,15 @@ class SunshineSelfManagementTool(
                 },
             )
 
-            else -> return failure("Unsupported or read-only category '$category'.")
+                else -> {
+                    unsupportedCategory = category
+                    current
+                }
+            }
         }
-        settingsRepository.updateSettings(updated)
+        unsupportedCategory?.let {
+            return failure("Unsupported or read-only category '$it'.")
+        }
         if (category == "agent_mode") {
             agentModeController.refreshAuthorization(updated)
         }
@@ -480,7 +487,8 @@ class SunshineSelfManagementTool(
             "inspect_authorization" -> success(JSONObject().put("agent_mode", agentModeSettingsJson(current)))
 
             "set_authorization" -> {
-                val updated = current.copy(
+                val updated = settingsRepository.updateSettings { stored ->
+                    stored.copy(
                     agentModeAuthorizationEnabled = arguments.optNullableBoolean("enabled")
                         ?: current.agentModeAuthorizationEnabled,
                     agentModeAuthorizationMethod = arguments.optString("method").trim()
@@ -492,8 +500,8 @@ class SunshineSelfManagementTool(
                             )
                         }
                         ?: current.agentModeAuthorizationMethod,
-                )
-                settingsRepository.updateSettings(updated)
+                    )
+                }
                 agentModeController.refreshAuthorization(updated)
                 success(JSONObject().put("agent_mode", agentModeSettingsJson(updated))) {
                     put("stdout", "Updated Agent Mode authorization settings.")
@@ -900,7 +908,7 @@ class SunshineSelfManagementTool(
                     put(
                         JSONObject().apply {
                             put("type", "string")
-                            put("enum", JSONArray(listOf("default", "termux", "alpine")))
+                            put("enum", JSONArray(listOf("default", "termux")))
                         },
                     )
                     put(keyValueArraySchema("Environment variables for stdio MCP servers."))

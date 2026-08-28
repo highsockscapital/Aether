@@ -20,7 +20,7 @@ import kotlinx.serialization.json.put
 
 private const val DefaultSearchResultLimit = 200
 private const val DefaultLsEntryLimit = 200
-private const val AlpineRuntimeName = "alpine"
+private const val HostRuntimeName = "termux"
 
 data class SharedHostToolResult(
     val outputJson: String,
@@ -104,7 +104,7 @@ class RuntimeHostToolExecutor(
         val commandSummary = buildReadCommandSummary(rawPath, offset, limit, showLineNumbers)
 
         return toolSuccess {
-            put("runtime", AlpineRuntimeName)
+            put("runtime", HostRuntimeName)
             put("command", commandSummary)
             put("path", rawPath)
             put("content", content)
@@ -151,7 +151,7 @@ class RuntimeHostToolExecutor(
         runtime.fileSystem.write(resolvedPath, bytes)
 
         return toolSuccess {
-            put("runtime", AlpineRuntimeName)
+            put("runtime", HostRuntimeName)
             put("command", "write $rawPath")
             put("path", rawPath)
             put("created", created)
@@ -233,7 +233,7 @@ class RuntimeHostToolExecutor(
         runtime.fileSystem.write(resolvedPath, bytes)
 
         return toolSuccess {
-            put("runtime", AlpineRuntimeName)
+            put("runtime", HostRuntimeName)
             put("command", editCommandSummary(rawPath, edits.size))
             put("path", rawPath)
             put("applied_edits", edits.size)
@@ -284,7 +284,7 @@ class RuntimeHostToolExecutor(
         val truncated = lines.size > maxResults
 
         return toolSuccess {
-            put("runtime", AlpineRuntimeName)
+            put("runtime", HostRuntimeName)
             put("command", grepCommandSummary(pattern, isRegex, rawPath))
             put("path", rawPath)
             put("pattern", pattern)
@@ -350,7 +350,7 @@ class RuntimeHostToolExecutor(
         val truncated = lines.size > maxResults
 
         return toolSuccess {
-            put("runtime", AlpineRuntimeName)
+            put("runtime", HostRuntimeName)
             put("command", findCommandSummary(pattern, rawPath))
             put("path", rawPath)
             put("pattern", pattern)
@@ -410,7 +410,7 @@ class RuntimeHostToolExecutor(
         val truncated = entries.size > maxEntries
 
         return toolSuccess {
-            put("runtime", AlpineRuntimeName)
+            put("runtime", HostRuntimeName)
             put("command", "ls $rawPath")
             put("path", rawPath)
             put("recursive", recursive)
@@ -439,14 +439,14 @@ class RuntimeHostToolExecutor(
         return SharedHostToolResult(
             outputJson = buildJsonObject {
                 put("ok", ok)
-                put("runtime", AlpineRuntimeName)
+                put("runtime", HostRuntimeName)
                 put("command", command)
                 put("working_directory", workingDirectory)
                 put("status", if (ok) "completed" else "failed")
                 put("stdout", output.stdout)
                 put("stderr", output.stderr)
                 put("exit_code", output.exit.exitCode)
-                if (!ok) put("errmsg", "Alpine command exited with code ${output.exit.exitCode}.")
+                if (!ok) put("errmsg", "Host command exited with code ${output.exit.exitCode}.")
             }.toString(),
             isError = !ok,
         )
@@ -668,7 +668,7 @@ private fun toolError(
 ): SharedHostToolResult = SharedHostToolResult(
     outputJson = buildJsonObject {
         put("ok", false)
-        if (includeRuntime) put("runtime", AlpineRuntimeName)
+        if (includeRuntime) put("runtime", HostRuntimeName)
         put(errorKey, message)
     }.toString(),
     isError = true,
@@ -683,7 +683,7 @@ private fun fileToolError(
 ): SharedHostToolResult = SharedHostToolResult(
     outputJson = buildJsonObject {
         put("ok", false)
-        put("runtime", AlpineRuntimeName)
+        put("runtime", HostRuntimeName)
         put("command", command)
         put("path", path)
         put("errmsg", message)

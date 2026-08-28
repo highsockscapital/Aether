@@ -176,7 +176,7 @@ class SharedPiBridgeClient(
         workspaceDirectory: String = "",
         systemPrompt: String = "",
         skillPaths: List<String> = emptyList(),
-        runtime: String = "alpine",
+        runtime: String = "termux",
         platform: String = "ios",
         workspaceTrusted: Boolean = true,
     ): JsonObject = request(

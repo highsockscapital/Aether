@@ -12,23 +12,20 @@ import org.json.JSONObject
 
 class RuntimeRouterTest {
     private val termuxRuntime = FakeRuntime(LocalRuntimeId.Termux)
-    private val alpineRuntime = FakeRuntime(LocalRuntimeId.Alpine)
     private val router = RuntimeRouter(
         termuxRuntime = termuxRuntime,
-        alpineRuntime = alpineRuntime,
     )
 
     @Test
     fun defaultRuntimeUsesConfiguredDefault() {
         val settings = AppSettings(
-            enabledRuntimeIds = setOf(LocalRuntimeId.Termux, LocalRuntimeId.Alpine),
-            defaultRuntimeId = LocalRuntimeId.Alpine,
+            enabledRuntimeIds = setOf(LocalRuntimeId.Termux),
+            defaultRuntimeId = LocalRuntimeId.Termux,
             termuxSetupCompleted = true,
-            alpineSetupCompleted = true,
         )
 
-        assertSame(alpineRuntime, router.runtimeFor(settings, null))
-        assertSame(alpineRuntime, router.runtimeFor(settings, "default"))
+        assertSame(termuxRuntime, router.runtimeFor(settings, null))
+        assertSame(termuxRuntime, router.runtimeFor(settings, "default"))
     }
 
     @Test
@@ -43,25 +40,23 @@ class RuntimeRouterTest {
     }
 
     @Test
-    fun explicitEnvironmentSelectsRequestedRuntime() {
+    fun legacyAlpineEnvironmentAliasesToDefaultRuntime() {
         val settings = AppSettings(
-            enabledRuntimeIds = setOf(LocalRuntimeId.Termux, LocalRuntimeId.Alpine),
+            enabledRuntimeIds = setOf(LocalRuntimeId.Termux),
             defaultRuntimeId = LocalRuntimeId.Termux,
             termuxSetupCompleted = true,
-            alpineSetupCompleted = true,
         )
 
-        assertSame(alpineRuntime, router.runtimeFor(settings, "alpine"))
+        assertSame(termuxRuntime, router.runtimeFor(settings, "alpine"))
         assertSame(termuxRuntime, router.runtimeFor(settings, "termux"))
     }
 
     @Test
-    fun workspaceDirectoryFollowsExplicitRuntimeEnvironment() {
+    fun workspaceDirectoryFollowsTermuxWorkspace() {
         val settings = AppSettings(
-            enabledRuntimeIds = setOf(LocalRuntimeId.Termux, LocalRuntimeId.Alpine),
-            defaultRuntimeId = LocalRuntimeId.Alpine,
+            enabledRuntimeIds = setOf(LocalRuntimeId.Termux),
+            defaultRuntimeId = LocalRuntimeId.Termux,
             termuxSetupCompleted = true,
-            alpineSetupCompleted = true,
         )
 
         assertEquals(
@@ -72,14 +67,17 @@ class RuntimeRouterTest {
                 environment = "termux",
             ),
         )
-        assertEquals(
-            "/workspace",
-            router.runtimeWorkspaceDirectory(
-                settings = settings.copy(defaultRuntimeId = LocalRuntimeId.Termux),
-                termuxWorkspaceDirectory = "/data/data/com.termux/files/home/.sunshine/workspaces/session-1",
-                environment = "alpine",
-            ),
+    }
+
+    @Test
+    fun unknownEnvironmentReturnsNull() {
+        val settings = AppSettings(
+            enabledRuntimeIds = setOf(LocalRuntimeId.Termux),
+            defaultRuntimeId = LocalRuntimeId.Termux,
+            termuxSetupCompleted = true,
         )
+
+        assertNull(router.runtimeFor(settings, "unknown-env"))
     }
 
     @Test
@@ -89,45 +87,43 @@ class RuntimeRouterTest {
 
     @Test
     fun prefixedRunIdsRouteToOwningRuntimeAndInnerId() {
-        val alpine = router.runtimeForRunId("alpine:run-1")
         val termux = router.runtimeForRunId("termux:abc")
 
-        assertSame(alpineRuntime, alpine?.first)
-        assertEquals("run-1", alpine?.second)
         assertSame(termuxRuntime, termux?.first)
         assertEquals("abc", termux?.second)
+        // Legacy "alpine:" run ids no longer resolve to a runtime.
+        assertNull(router.runtimeForRunId("alpine:run-1"))
         assertNull(router.runtimeForRunId("run-without-prefix"))
     }
 
     @Test
     fun shellToolPrefixesRunIdAndRoutesFetchAndKillByPrefix() = runBlocking {
         val settings = AppSettings(
-            enabledRuntimeIds = setOf(LocalRuntimeId.Termux, LocalRuntimeId.Alpine),
+            enabledRuntimeIds = setOf(LocalRuntimeId.Termux),
             defaultRuntimeId = LocalRuntimeId.Termux,
             termuxSetupCompleted = true,
-            alpineSetupCompleted = true,
         )
         val shellTool = RuntimeShellTool(router)
 
-        val executeResult = shellTool.execute(settings, """{"command":"sleep 10","environment":"alpine"}""")
-        val fetchResult = shellTool.fetch(settings, """{"run_id":"alpine:run-1"}""")
-        val killResult = shellTool.kill(settings, """{"run_id":"alpine:run-1"}""")
+        val executeResult = shellTool.execute(settings, """{"command":"sleep 10","environment":"termux"}""")
+        val fetchResult = shellTool.fetch(settings, """{"run_id":"termux:run-1"}""")
+        val killResult = shellTool.kill(settings, """{"run_id":"termux:run-1"}""")
         val executeJson = JSONObject(executeResult)
         val fetchJson = JSONObject(fetchResult)
         val killJson = JSONObject(killResult)
 
         assertTrue(executeJson.optBoolean("ok"))
-        assertEquals("alpine:run-1", executeJson.optString("run_id"))
-        assertEquals("alpine", executeJson.optString("runtime"))
+        assertEquals("termux:run-1", executeJson.optString("run_id"))
+        assertEquals("termux", executeJson.optString("runtime"))
         assertTrue(fetchJson.optBoolean("ok"))
-        assertEquals("alpine:run-1", fetchJson.optString("run_id"))
-        assertEquals("alpine", fetchJson.optString("runtime"))
+        assertEquals("termux:run-1", fetchJson.optString("run_id"))
+        assertEquals("termux", fetchJson.optString("runtime"))
         assertTrue(killJson.optBoolean("ok"))
-        assertEquals("alpine:run-1", killJson.optString("run_id"))
-        assertEquals("alpine", killJson.optString("runtime"))
-        assertEquals("""{"command":"sleep 10"}""", alpineRuntime.lastExecuteArgumentsJson)
-        assertEquals("""{"run_id":"run-1"}""", alpineRuntime.lastFetchArgumentsJson)
-        assertEquals("""{"run_id":"run-1"}""", alpineRuntime.lastKillArgumentsJson)
+        assertEquals("termux:run-1", killJson.optString("run_id"))
+        assertEquals("termux", killJson.optString("runtime"))
+        assertEquals("""{"command":"sleep 10"}""", termuxRuntime.lastExecuteArgumentsJson)
+        assertEquals("""{"run_id":"run-1"}""", termuxRuntime.lastFetchArgumentsJson)
+        assertEquals("""{"run_id":"run-1"}""", termuxRuntime.lastKillArgumentsJson)
     }
 }
 

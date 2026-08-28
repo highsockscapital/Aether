@@ -17,7 +17,7 @@ class SharedMcpManagerTest {
                 arguments = listOf("server.mjs", "--stdio"),
                 workingDirectory = "/root/workspace",
                 environment = mapOf("TOKEN" to "secret", "LOG_LEVEL" to "debug"),
-                runtimeEnvironment = "alpine",
+                runtimeEnvironment = "termux",
                 connectTimeoutMillis = 12_000L,
                 requestTimeoutMillis = 45_000L,
                 enabled = false,

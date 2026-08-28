@@ -1,5 +1,6 @@
 package com.highsockscapital.sunshine.ui
 
+import com.highsockscapital.sunshine.data.PiProviderDefinition
 import com.highsockscapital.sunshine.data.SunshineLlmUserAgent
 import com.highsockscapital.sunshine.data.LlmProviderConfig
 import com.highsockscapital.sunshine.data.PiProviderCatalog
@@ -15,8 +16,9 @@ import org.junit.Test
 class ProviderConfigFormTest {
     @Test
     fun catalogIncludesEveryPiBuiltInProviderAndCustomEndpoint() {
-        assertEquals(35, PiProviderCatalog.builtInProviders.size)
-        assertEquals(36, PiProviderCatalog.providers.size)
+        assertEquals(1, PiProviderCatalog.builtInProviders.size)
+        assertEquals("openrouter", PiProviderCatalog.builtInProviders.single().id)
+        assertEquals(2, PiProviderCatalog.providers.size)
 
         val customProviders = PiProviderCatalog.providers.filterNot { it.isBuiltIn }
         assertEquals(1, customProviders.size)
@@ -24,41 +26,43 @@ class ProviderConfigFormTest {
     }
 
     @Test
-    fun cloudProvidersUseAmbientAuthenticationByDefault() {
-        listOf("amazon-bedrock", "google-vertex").forEach { providerId ->
-            val state = ProviderFormState.fromConfig(null)
-            val definition = PiProviderCatalog.resolve(providerId)
+    fun applyProviderDefaultsHonorsDefinitionAuthCapabilities() {
+        // Definitions that only offer ambient authentication default to it.
+        val cloudState = ProviderFormState.fromConfig(null)
+        cloudState.applyProviderDefaults(
+            PiProviderDefinition(
+                id = "test-cloud",
+                displayName = "Test Cloud",
+                defaultBaseUrl = "",
+                defaultModelId = "",
+                supportsApiKey = true,
+                supportsInteractiveApiKey = false,
+                supportsAmbientAuth = true,
+            )
+        )
+        assertEquals(ProviderAuthMethod.Ambient, cloudState.authMethod)
 
-            assertTrue(definition.supportsApiKey)
-            assertFalse(definition.supportsInteractiveApiKey)
-            assertTrue(definition.supportsAmbientAuth)
+        // The custom endpoint definition requires a base URL and fills in its
+        // default; API keys pass through unchanged.
+        val customState = ProviderFormState.fromConfig(null)
+        customState.applyProviderDefaults(PiProviderCatalog.resolve("openai-compatible"))
+        assertTrue(customState.selectedDefinition.requiresBaseUrl)
+        assertEquals("https://api.openai.com/v1", customState.baseUrl)
 
-            state.applyProviderDefaults(definition)
-            assertEquals(ProviderAuthMethod.Ambient, state.authMethod)
-            assertTrue(state.isAuthenticationConfigured())
-        }
+        customState.apiKey = "test-key"
+        val config = customState.buildConfig()
+        assertEquals("openai-compatible", config.piProviderId)
+        assertEquals("test-key", config.apiKey)
+        assertEquals("https://api.openai.com/v1", config.baseUrl)
     }
-
-    @Test
-    fun cloudflareGatewayUsesPiCredentialFieldsWithoutRequiringBaseUrl() {
-        val state = ProviderFormState.fromConfig(null)
-
-        state.applyProviderDefaults(PiProviderCatalog.resolve("cloudflare-ai-gateway"))
-        state.apiKey = "test-key"
-
-        assertFalse(state.selectedDefinition.requiresBaseUrl)
-        assertEquals("", state.baseUrl)
-        assertTrue(state.isAuthenticationConfigured())
-    }
-
     @Test
     fun ensureAvailableProviderIdUsesNextUnusedSuffix() {
         val state = ProviderFormState.fromConfig(null)
 
-        state.applyProviderDefaults(PiProviderCatalog.resolve("openai"))
-        state.ensureAvailableProviderId(setOf("openai", "openai_2", "openai_3"))
+        state.applyProviderDefaults(PiProviderCatalog.resolve("openrouter"))
+        state.ensureAvailableProviderId(setOf("openrouter", "openrouter_2", "openrouter_3"))
 
-        assertEquals("openai_4", state.providerId)
+        assertEquals("openrouter_4", state.providerId)
     }
 
     @Test

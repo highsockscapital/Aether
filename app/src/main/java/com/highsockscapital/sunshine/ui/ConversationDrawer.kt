@@ -53,6 +53,7 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -144,6 +145,7 @@ import com.highsockscapital.sunshine.termux.TermuxSetupState
 import com.highsockscapital.sunshine.ui.theme.SunshineBackground
 import com.highsockscapital.sunshine.ui.theme.SunshineBackgroundGradientTop
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurface
+import com.highsockscapital.sunshine.ui.theme.SunshineOutline
 import com.highsockscapital.sunshine.ui.theme.SunshineOnPrimary
 import com.highsockscapital.sunshine.ui.theme.SunshineOnSurfaceVariant
 import com.highsockscapital.sunshine.ui.theme.SunshinePrimary
@@ -434,7 +436,7 @@ private fun DrawerCompactSearchField(
 ) {
     Row(
         modifier = modifier
-            .shadow(12.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .background(SunshineSurface)
             .padding(horizontal = 14.dp, vertical = 11.dp),
@@ -635,7 +637,7 @@ private fun DrawerSessionActionMenu(
             Column(
                 modifier = Modifier
                     .widthIn(min = 188.dp, max = 220.dp)
-                    .shadow(18.dp, RoundedCornerShape(24.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+                    .border(1.dp, SunshineOutline, RoundedCornerShape(24.dp))
                     .clip(RoundedCornerShape(24.dp))
                     .background(SunshineSurface)
                     .padding(8.dp),
@@ -695,9 +697,9 @@ private fun DrawerFloatingChatButton(
 ) {
     Row(
         modifier = modifier
-            .shadow(18.dp, RoundedCornerShape(999.dp), ambientColor = SunshineScrim, spotColor = SunshineScrim)
+            .border(1.dp, SunshineOutline, RoundedCornerShape(999.dp))
             .clip(RoundedCornerShape(999.dp))
-            .background(Color(0xFFAD7BF9))
+            .background(SunshinePrimary)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,

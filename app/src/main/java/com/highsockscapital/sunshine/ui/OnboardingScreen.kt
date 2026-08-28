@@ -139,7 +139,6 @@ private const val SetupProgressTickMillis = 450L
 private val TourEasing = CubicBezierEasing(0.22f, 0.84f, 0.18f, 1f)
 private val InitialOnboardingSteps = listOf(
     OnboardingStep.Landing,
-    OnboardingStep.AlpineSetup,
     OnboardingStep.ProviderSetup,
 )
 private val FollowUpOnboardingSteps = listOf(
@@ -188,7 +187,6 @@ fun OnboardingScreen(
     providerAuthState: PiProviderAuthState,
     piCoreSetupState: PiCoreSetupState,
     termuxSetupState: TermuxSetupState,
-    alpineSetupState: LocalRuntimeSetupState,
     rootSetupState: RootSetupState,
     agentModeAuthorizationMethod: AgentModeAuthorizationMethod,
     tavilyApiKey: String,
@@ -207,9 +205,6 @@ fun OnboardingScreen(
     onOpenTermux: () -> Unit,
     onInstallTermux: () -> Unit,
     onRefreshTermuxSetup: () -> Unit,
-    onInitializeAlpineRuntime: () -> Unit,
-    onRetryAlpineSetup: () -> Unit,
-    onRefreshAlpineSetup: () -> Unit,
     onRefreshRootSetup: () -> Unit,
     onConfigureWithRoot: () -> Unit,
     onSaveAgentModeAuthorization: (Boolean, AgentModeAuthorizationMethod) -> Unit,
@@ -228,7 +223,7 @@ fun OnboardingScreen(
     }
     val isInitialFlow = initialStep == OnboardingStep.Landing ||
         initialStep == OnboardingStep.ProviderSetup ||
-        initialStep == OnboardingStep.AlpineSetup
+        false
     val steps = remember(initialStep) {
         if (isInitialFlow) InitialOnboardingSteps else FollowUpOnboardingSteps
     }
@@ -266,7 +261,7 @@ fun OnboardingScreen(
                 stepIndex = stepIndex,
                 stepCount = steps.size,
                 replayMode = replayMode,
-                onPrimary = { currentStep = OnboardingStep.AlpineSetup },
+                onPrimary = { currentStep = OnboardingStep.ProviderSetup },
                 onSecondary = if (replayMode) onClose else onSkip,
             )
 
@@ -298,40 +293,6 @@ fun OnboardingScreen(
                 onSkip = {
                     selectedRuntimePath = null
                     onCompleteFollowUp()
-                },
-            )
-
-            OnboardingStep.AlpineSetup -> AlpineRuntimeStep(
-                stepIndex = stepIndex,
-                stepCount = steps.size,
-                setupState = alpineSetupState,
-                piCoreSetupState = piCoreSetupState,
-                required = isInitialFlow,
-                onBack = {
-                    if (setupPreviewMode) {
-                        onClose()
-                    } else {
-                        currentStep = if (isInitialFlow) {
-                        OnboardingStep.Landing
-                        } else {
-                            OnboardingStep.LocalRuntimeChoice
-                        }
-                    }
-                },
-                onClose = onClose,
-                onInitialize = onInitializeAlpineRuntime,
-                onRetry = onRetryAlpineSetup,
-                onRefresh = onRefreshAlpineSetup,
-                onContinue = {
-                    if (setupPreviewMode) {
-                        onClose()
-                    } else {
-                        currentStep = if (isInitialFlow) {
-                            OnboardingStep.ProviderSetup
-                        } else {
-                            OnboardingStep.LocalRuntimeChoice
-                        }
-                    }
                 },
             )
 
@@ -831,209 +792,6 @@ private fun LocalRuntimeChoiceStep(
 }
 
 @Composable
-private fun LocalRuntimePathButton(
-    icon: ImageVector,
-    accent: Color,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(98.dp),
-        shape = RoundedCornerShape(26.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = TourSurface,
-            contentColor = TourTextPrimary,
-        ),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(accent.copy(alpha = 0.14f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = accent)
-            }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = TourTextPrimary)
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TourTextSecondary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AlpineRuntimeStep(
-    stepIndex: Int,
-    stepCount: Int,
-    setupState: LocalRuntimeSetupState,
-    piCoreSetupState: PiCoreSetupState,
-    required: Boolean,
-    onBack: () -> Unit,
-    onClose: () -> Unit,
-    onInitialize: () -> Unit,
-    onRetry: () -> Unit,
-    onRefresh: () -> Unit,
-    onContinue: () -> Unit,
-) {
-    LaunchedEffect(Unit) {
-        onRefresh()
-    }
-    ConversationStepPage(
-        stepIndex = stepIndex,
-        stepCount = stepCount,
-        message = stringResource(R.string.onboarding_alpine_runtime_message),
-        onBack = onBack,
-        topRightLabel = stringResource(R.string.common_close),
-        onTopRight = onClose,
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            StepLead(
-                icon = Icons.Rounded.Code,
-                accent = when (setupState.issue) {
-                    LocalRuntimeIssue.Ready -> TourGreen
-                    LocalRuntimeIssue.UnsupportedAbi,
-                    LocalRuntimeIssue.MissingAssets,
-                    LocalRuntimeIssue.Failed -> TourGold
-                    else -> TourBlue
-                },
-                title = "Alpine",
-                body = alpineTourStatusText(setupState),
-            )
-            if (!setupState.isReady && setupState.detail.isNotBlank()) {
-                Text(
-                    text = setupState.detail,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TourTextSecondary,
-                )
-            }
-            if (
-                piCoreSetupState.isChecking ||
-                piCoreSetupState.output.isNotBlank() ||
-                setupState.isReady && (required || piCoreSetupState.phase != PiCoreSetupPhase.Idle)
-            ) {
-                PiCoreSetupProgress(piCoreSetupState)
-            }
-            when (setupState.issue) {
-                LocalRuntimeIssue.Ready -> if (!required || piCoreSetupState.isReady) {
-                    TourActionRow(
-                        primaryLabel = stringResource(R.string.common_continue),
-                        onPrimary = onContinue,
-                        secondaryLabel = stringResource(R.string.common_refresh),
-                        onSecondary = onRefresh,
-                    )
-                } else {
-                    TourActionRow(
-                        primaryLabel = if (piCoreSetupState.isChecking) {
-                            stringResource(R.string.onboarding_pi_setup_working)
-                        } else stringResource(R.string.common_retry),
-                        onPrimary = onRetry,
-                        primaryEnabled = !piCoreSetupState.isChecking,
-                        primaryLoading = piCoreSetupState.isChecking,
-                        secondaryLabel = stringResource(R.string.common_back),
-                        onSecondary = onBack,
-                    )
-                }
-
-                LocalRuntimeIssue.UnsupportedAbi -> if (required) {
-                    TourActionRow(
-                        primaryLabel = stringResource(R.string.common_refresh),
-                        onPrimary = onRefresh,
-                        secondaryLabel = stringResource(R.string.common_back),
-                        onSecondary = onBack,
-                    )
-                } else {
-                    TourActionRow(
-                        primaryLabel = stringResource(R.string.common_refresh),
-                        onPrimary = onRefresh,
-                        secondaryLabel = stringResource(R.string.common_skip),
-                        onSecondary = onContinue,
-                    )
-                }
-
-                LocalRuntimeIssue.MissingAssets -> if (required) {
-                    TourActionRow(
-                        primaryLabel = stringResource(R.string.common_refresh),
-                        onPrimary = onRefresh,
-                        secondaryLabel = stringResource(R.string.common_back),
-                        onSecondary = onBack,
-                    )
-                } else {
-                    TourActionRow(
-                        primaryLabel = stringResource(R.string.common_refresh),
-                        onPrimary = onRefresh,
-                        secondaryLabel = stringResource(R.string.common_skip),
-                        onSecondary = onContinue,
-                    )
-                }
-
-                LocalRuntimeIssue.Failed -> if (required) {
-                    TourActionRow(
-                        primaryLabel = if (piCoreSetupState.isChecking) {
-                            stringResource(R.string.onboarding_pi_setup_working)
-                        } else {
-                            stringResource(R.string.common_retry)
-                        },
-                        onPrimary = if (piCoreSetupState.isChecking) onRefresh else onRetry,
-                        primaryEnabled = !piCoreSetupState.isChecking,
-                        primaryLoading = piCoreSetupState.isChecking,
-                        secondaryLabel = stringResource(R.string.common_back),
-                        onSecondary = onBack,
-                    )
-                } else {
-                    TourActionRow(
-                        primaryLabel = stringResource(R.string.common_retry),
-                        onPrimary = onRetry,
-                        secondaryLabel = stringResource(R.string.common_skip),
-                        onSecondary = onContinue,
-                    )
-                }
-
-                else -> if (required) {
-                    TourActionRow(
-                        primaryLabel = if (piCoreSetupState.isChecking) {
-                            stringResource(R.string.onboarding_pi_setup_working)
-                        } else {
-                            stringResource(R.string.settings_initialize)
-                        },
-                        onPrimary = if (piCoreSetupState.isChecking) onRefresh else onInitialize,
-                        primaryEnabled = !piCoreSetupState.isChecking,
-                        primaryLoading = piCoreSetupState.isChecking,
-                        secondaryLabel = stringResource(R.string.common_back),
-                        onSecondary = onBack,
-                    )
-                } else {
-                    TourActionRow(
-                        primaryLabel = stringResource(R.string.settings_initialize),
-                        onPrimary = onInitialize,
-                        secondaryLabel = stringResource(R.string.common_skip),
-                        onSecondary = onContinue,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun PiCoreSetupProgress(
     setupState: PiCoreSetupState,
 ) {
@@ -1047,7 +805,7 @@ private fun PiCoreSetupProgress(
     var organicProgress by remember { mutableStateOf(0f) }
     val phaseProgress = currentStep.toFloat() / stepCount
     LaunchedEffect(setupState.isChecking, setupState.isReady, setupState.phase) {
-        if (setupState.isChecking && setupState.phase == PiCoreSetupPhase.CheckingAlpine) {
+        if (setupState.isChecking && setupState.phase == PiCoreSetupPhase.CheckingRuntime) {
             organicProgress = phaseProgress
         }
         organicProgress = maxOf(organicProgress, phaseProgress)
@@ -1246,7 +1004,7 @@ private fun piCoreSetupStatusText(
     setupState: PiCoreSetupState,
 ): String = when (setupState.phase) {
     PiCoreSetupPhase.Idle -> stringResource(R.string.onboarding_pi_setup_pending)
-    PiCoreSetupPhase.CheckingAlpine -> stringResource(R.string.onboarding_pi_setup_checking_alpine)
+    PiCoreSetupPhase.CheckingRuntime -> stringResource(R.string.onboarding_pi_setup_checking_runtime)
     PiCoreSetupPhase.CheckingNode -> stringResource(R.string.onboarding_pi_setup_checking_node)
     PiCoreSetupPhase.InstallingNode -> stringResource(R.string.onboarding_pi_setup_installing_node)
     PiCoreSetupPhase.PreparingBridge -> stringResource(R.string.onboarding_pi_setup_preparing_bridge)
@@ -1257,21 +1015,6 @@ private fun piCoreSetupStatusText(
         setupState.nodeVersion.ifBlank { "-" },
     )
     PiCoreSetupPhase.Failed -> stringResource(R.string.onboarding_pi_setup_failed)
-}
-
-@Composable
-private fun alpineTourStatusText(
-    setupState: LocalRuntimeSetupState,
-): String = when (setupState.issue) {
-    LocalRuntimeIssue.Ready -> stringResource(R.string.onboarding_alpine_status_ready)
-    LocalRuntimeIssue.NotConfigured,
-    LocalRuntimeIssue.NotInstalled -> stringResource(R.string.onboarding_alpine_status_not_installed)
-    LocalRuntimeIssue.UnsupportedAbi -> stringResource(R.string.onboarding_alpine_status_unsupported_abi)
-    LocalRuntimeIssue.MissingAssets -> stringResource(R.string.onboarding_alpine_status_missing_assets)
-    LocalRuntimeIssue.Failed -> stringResource(R.string.onboarding_alpine_status_failed)
-    LocalRuntimeIssue.PermissionMissing,
-    LocalRuntimeIssue.ExternalAppsDisabled,
-    LocalRuntimeIssue.DispatchFailed -> stringResource(R.string.onboarding_alpine_status_not_ready)
 }
 
 @Composable

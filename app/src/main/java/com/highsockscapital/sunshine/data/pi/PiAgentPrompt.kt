@@ -23,7 +23,7 @@ internal fun buildPiAgentInstructions(
     append(
         "You are running inside Sunshine on Android. " +
             "The current local runtime is ${runtimeId.storageValue} and its session cwd is $workspaceDirectory. " +
-            "Sunshine keeps Alpine and Termux workspaces independent when the runtime changes. " +
+            "Sunshine runs inside the Termux environment on this device. " +
             "User-uploaded files are placed under uploads/; use read on the provided path when image or file contents are needed. " +
             "Sunshine-owned configuration, Skill, runtime, Extension, Agent Mode, scheduled-task, and developer operations are exposed only through available sunshine_* tools. " +
             "Never modify LLM provider credentials or model configuration through self-management tools. " +
