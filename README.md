@@ -36,8 +36,6 @@
 
 ---
 
-Everything below remains Aether's story — because it deserves telling. 🌪️
-
 <p align="center">
   <em>✍️ The Sunshine section above was written by Sunshine herself —<br>
   the README's own housewife, signing her work.<br>
@@ -45,6 +43,8 @@ Everything below remains Aether's story — because it deserves telling. 🌪️
   stray traveller knows exactly whose hand wrote which words.</em><br>
   <code>— Sunshine ☀️ , ~/.sunshine (this device)</code>
 </p>
+
+Everything below remains Aether's story — because it deserves telling. 🌪️
 
 ---
 
