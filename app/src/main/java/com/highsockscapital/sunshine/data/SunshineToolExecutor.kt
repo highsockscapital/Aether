@@ -48,6 +48,8 @@ class SunshineToolExecutor(
                     .toString()
             }
 
+            "sunshine_screen" -> executeScreen(argumentsJson)
+
             "sunshine_runtime_manage" -> executeRuntimeManage(
                 settings = settings,
                 currentRuntimeId = currentRuntimeId,
@@ -123,8 +125,57 @@ class SunshineToolExecutor(
         }.toString()
     }
 
+    private fun executeScreen(argumentsJson: String): String {
+        val service = com.highsockscapital.sunshine.accessibility.SunshineAccessibilityService.instance
+            ?: return JSONObject()
+                .put("ok", false)
+                .put("errmsg", "Sunshine's accessibility engine is off. Enable it in system settings.")
+                .toString()
+
+        val arguments = runCatching { JSONObject(argumentsJson) }.getOrNull()
+            ?: return JSONObject().put("ok", false).put("errmsg", "Invalid JSON arguments.").toString()
+        val action = arguments.optString("action").trim()
+
+        fun ok(extra: JSONObject.() -> Unit = {}): String =
+            JSONObject().put("ok", true).put("action", action).apply(extra).toString()
+
+        fun err(message: String): String =
+            JSONObject().put("ok", false).put("errmsg", message).toString()
+
+        return when (action) {
+            "describe" -> {
+                val lines = service.describeScreen()
+                if (lines.isEmpty()) err("No active window or the service cannot see it yet.")
+                else ok {
+                    put("nodes", lines.size)
+                    put("screen", lines.take(400).joinToString("\n"))
+                    if (lines.size > 400) put("truncated", lines.size - 400)
+                }
+            }
+            "focus" -> {
+                val focused = service.rootInActiveWindow
+                    ?.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT)
+                ok {
+                    put(
+                        "focused_text",
+                        focused?.text?.toString() ?: JSONObject.NULL,
+                    )
+                    put(
+                        "focused_class",
+                        focused?.className?.toString() ?: JSONObject.NULL,
+                    )
+                }
+            }
+            else -> err("Unknown sunshine_screen action '$action'.")
+        }
+    }
+
     companion object {
-        val hostToolNames: Set<String> = setOf("agent_display", *SelfManagementToolNames.toTypedArray())
+        val hostToolNames: Set<String> = setOf(
+            "agent_display",
+            "sunshine_screen",
+            *SelfManagementToolNames.toTypedArray(),
+        )
 
         fun supports(toolName: String): Boolean = toolName in hostToolNames
 
@@ -142,6 +193,7 @@ class SunshineToolExecutor(
                     ),
                 )
             }
+            put(screenToolDefinition())
             if (agentModeEnabled) put(agentModeToolDefinition())
         }
 
@@ -242,6 +294,32 @@ private fun agentModeToolDefinition(): JSONObject = JSONObject().apply {
                     }
                     put("key", stringProperty("For key: Android key code name or number."))
                     put("text", stringProperty("For text: text to type into the focused field."))
+                },
+            )
+            put("required", JSONArray().put("action"))
+            put("additionalProperties", false)
+        },
+    )
+    put("execution_mode", "sequential")
+}
+
+private fun screenToolDefinition(): JSONObject = JSONObject().apply {
+    put("name", "sunshine_screen")
+    put(
+        "description",
+        "Look at whatever is on the device's screen right now through Sunshine's accessibility engine. " +
+            "Use 'describe' to get the current window's node tree (eyes). " +
+            "Use 'focus' to see which input field currently has focus. " +
+            "Note: hands (taps, swipes, typing) stay with agent_display or future tools — this tool only knows how to look.",
+    )
+    put(
+        "parameters",
+        JSONObject().apply {
+            put("type", "object")
+            put(
+                "properties",
+                JSONObject().apply {
+                    put("action", stringProperty("One of: describe, focus."))
                 },
             )
             put("required", JSONArray().put("action"))
