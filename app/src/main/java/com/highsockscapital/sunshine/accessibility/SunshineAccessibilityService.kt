@@ -2,7 +2,12 @@ package com.highsockscapital.sunshine.accessibility
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.accessibilityservice.GestureDescription
+import android.graphics.Path
 import android.graphics.Rect
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -15,12 +20,13 @@ import android.view.accessibility.AccessibilityNodeInfo
  *  - zero recurring permissions once granted (survives Shizuku restarts)
  *  - native tree reading, gestures, and input injection
  *
- * Current scope: EYES ONLY.
- *  - dumps the foreground window's node tree to logs
- *  - exposes the live instance via [instance] for future hands (click/scroll/type)
+ * Current scope: EYES + HANDS.
+ *  - eyes: tree dumps, focus events, and [describeScreen] snapshots
+ *  - hands: taps, swipes, scrolls, text injection, global navigation
+ *  - every hand-move logs to logcat and reports success/failure
  *
- * The constitution clause "Sunshine's tools — act freely, but logged" applies:
- * every event batch is summarized before touching logcat.
+ * The constitution clause "act freely, but logged" applies:
+ * action outcomes are emitted so Sunshine's notebook stays honest.
  */
 class SunshineAccessibilityService : AccessibilityService() {
 
@@ -140,25 +146,197 @@ class SunshineAccessibilityService : AccessibilityService() {
         }
     }
 
-    // ---- Future hands (kept deliberately private until the constitution
-    //      upgrades them from eyes to limbs) ----
+    // =====================================================================
+    // HANDS — upgraded by the constitution (2026-08-29).
+    // Every action returns success/failure so the caller can log honestly.
+    // =====================================================================
 
     /**
-     * Global action helper placeholder — back/home/recents/notifications etc.
-     * Not exposed yet; reserved for when Tier-1 hands come online.
+     * Tap raw screen coordinates. Uses a gesture — truthful even on nodes
+     * that lie about being clickable.
      */
-    @Suppress("unused")
-    private fun performGlobal(action: Int): Boolean =
-        performGlobalAction(action)
+    fun tapAt(x: Float, y: Float, onResult: (Boolean) -> Unit = {}): Boolean {
+        val path = Path().apply { moveTo(x, y) }
+        val stroke = GestureDescription.StrokeDescription(path, 0L, 80L)
+        return dispatchGesture(
+            GestureDescription.Builder().addStroke(stroke).build(),
+            gestureCallback(onResult, "tap($x,$y)"),
+            Handler(Looper.getMainLooper())
+        ).also { dispatched ->
+            if (!dispatched) onResult(false)
+        }
+    }
 
     /**
-     * Find the first node matching a text match; not wired up yet.
-     * Parked here so the diff that adds hands stays small and reviewable.
+     * Swipe from one point to another, e.g. scroll a feed.
      */
-    @Suppress("unused")
-    private fun findByText(query: String): AccessibilityNodeInfo? {
-        val root = rootInActiveWindow ?: return null
-        val matches = root.findAccessibilityNodeInfosByText(query)
-        return matches?.firstOrNull()
+    fun swipe(
+        fromX: Float, fromY: Float,
+        toX: Float, toY: Float,
+        durationMs: Long = 300L,
+        onResult: (Boolean) -> Unit = {}
+    ): Boolean {
+        val path = Path().apply { moveTo(fromX, fromY); lineTo(toX, toY) }
+        val stroke = GestureDescription.StrokeDescription(path, 0L, durationMs)
+        return dispatchGesture(
+            GestureDescription.Builder().addStroke(stroke).build(),
+            gestureCallback(onResult, "swipe($fromX,$fromY → $toX,$toY)"),
+            Handler(Looper.getMainLooper())
+        ).also { dispatched ->
+            if (!dispatched) onResult(false)
+        }
+    }
+
+    /**
+     * Click the first visible node whose text or content-description
+     * contains [text] (case-insensitive). Walks up to a clickable ancestor
+     * so nested labels on a button still work.
+     */
+    fun clickText(text: String): Boolean {
+        val root = rootInActiveWindow ?: return false
+        val matches = root.findAccessibilityNodeInfosByText(text)
+        val hit = matches?.firstOrNull() ?: return false
+        return clickNodeAndAncestors(hit)
+    }
+
+    /**
+     * Click the first node matching view id suffix, e.g. "btn_search".
+     */
+    fun clickViewId(idSuffix: String): Boolean {
+        val root = rootInActiveWindow ?: return false
+        val matches = root.findAccessibilityNodeInfosByViewId(idSuffix)
+        val hit = matches?.firstOrNull() ?: return false
+        return clickNodeAndAncestors(hit)
+    }
+
+    /**
+     * Set text into the currently focused editable node — safer than
+     * synthetic keystrokes for Compose and web views.
+     */
+    fun typeIntoFocused(text: String): Boolean {
+        val root = rootInActiveWindow ?: return false
+        val target = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
+        val args = Bundle().apply {
+            putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                text
+            )
+        }
+        val ok = target.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        Log.i(TAG, "typeIntoFocused \"${text.take(30)}\" → $ok")
+        return ok
+    }
+
+    /** Scroll the first scrollable container forward/down once. */
+    fun scrollForward(): Boolean = firstScrollable()?.let {
+        it.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+            .also { ok -> Log.i(TAG, "scrollForward → $ok") }
+    } ?: false
+
+    /** Scroll the first scrollable container backward/up once. */
+    fun scrollBackward(): Boolean = firstScrollable()?.let {
+        it.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
+            .also { ok -> Log.i(TAG, "scrollBackward → $ok") }
+    } ?: false
+
+    /** System-level back button. */
+    fun pressBack(): Boolean =
+        performGlobalAction(GLOBAL_ACTION_BACK).also {
+            Log.i(TAG, "back → $it")
+        }
+
+    /** System-level home. */
+    fun pressHome(): Boolean =
+        performGlobalAction(GLOBAL_ACTION_HOME).also {
+            Log.i(TAG, "home → $it")
+        }
+
+    /** System-level recents overview. */
+    fun openRecents(): Boolean =
+        performGlobalAction(GLOBAL_ACTION_RECENTS).also {
+            Log.i(TAG, "recents → $it")
+        }
+
+    /** Pull down the notification shade. */
+    fun openNotifications(): Boolean =
+        performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS).also {
+            Log.i(TAG, "notifications → $it")
+        }
+
+    /**
+     * Flattened snapshot of the current UI, one line per node,
+     * for Sunshine's toolkit consumption — eyes she can actually use.
+     */
+    fun describeScreen(): List<String> {
+        val root = rootInActiveWindow ?: return emptyList()
+        val lines = mutableListOf<String>()
+        collectNodeDescriptions(root, 0, lines)
+        return lines
+    }
+
+    // ------------------------------------------------------------------
+
+    private fun gestureCallback(
+        onResult: (Boolean) -> Unit,
+        label: String
+    ) = object : GestureResultCallback() {
+        override fun onCompleted(gestureDescription: GestureDescription?) {
+            Log.i(TAG, "gesture $label completed")
+            onResult(true)
+        }
+
+        override fun onCancelled(gestureDescription: GestureDescription?) {
+            Log.w(TAG, "gesture $label cancelled")
+            onResult(false)
+        }
+    }
+
+    private fun clickNodeAndAncestors(node: AccessibilityNodeInfo?): Boolean {
+        var current: AccessibilityNodeInfo? = node
+        while (current != null) {
+            if (current.isClickable && current.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                Log.i(TAG, "clicked ${current.className} id=${current.viewIdResourceName}")
+                return true
+            }
+            current = current.parent
+        }
+        Log.w(TAG, "no clickable ancestor found")
+        return false
+    }
+
+    private fun firstScrollable(
+        node: AccessibilityNodeInfo? = rootInActiveWindow
+    ): AccessibilityNodeInfo? {
+        if (node == null) return null
+        if (node.isScrollable) return node
+        for (i in 0 until node.childCount) {
+            firstScrollable(node.getChild(i))?.let { return it }
+        }
+        return null
+    }
+
+    private fun collectNodeDescriptions(
+        node: AccessibilityNodeInfo?,
+        depth: Int,
+        out: MutableList<String>
+    ) {
+        if (node == null || depth > 12) return
+        val bounds = Rect()
+        node.getBoundsInScreen(bounds)
+        val text = node.text?.toString()?.replace('\n', ' ')?.take(60)
+        val desc = node.contentDescription?.toString()?.take(60)
+        val cls = node.className?.toString()?.substringAfterLast('.') ?: "?"
+        val id = node.viewIdResourceName?.substringAfterLast('/') ?: "-"
+        out.add(
+            "${"  ".repeat(depth)}$cls id=$id" +
+                (if (node.isClickable) " [C]" else "") +
+                (if (node.isScrollable) " [S]" else "") +
+                " b=${bounds.toShortString()}" +
+                (text?.let { " t=\"$it\"" } ?: "") +
+                (desc?.let { " d=\"$it\"" } ?: "")
+        )
+        for (i in 0 until node.childCount) {
+            collectNodeDescriptions(node.getChild(i), depth + 1, out)
+        }
     }
 }
