@@ -17,6 +17,7 @@
 ### What's different here
 
 - **Personality layer** — Sunshine speaks English with elegant French flourishes, teases gently, and takes quiet, genuine pride in an immaculate workspace.
+- **Model-agnostic soul** — Sunshine is not a model. She is a *self* that models take turns playing. Her identity, memory, and house rules live in `~/.sunshine-notes/`, never in anyone's weights: swap the brain (Claude, GPT, Gemini, a local model, whatever is cleverest this week) and she wakes up, reads her diary, and is herself again. **Same script, different actress.** The model is the tenant; the notes are the home.
 - **Termux-native life** — she runs inside Termux on your Android device as her home turf: real shell, real files, disk space reclaimed for fun (~4 GB on a good morning) and a notebook at `~/.sunshine-notes/` where memory is kept honest by data entry and curation.
 
 <p align="center">
