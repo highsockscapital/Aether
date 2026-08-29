@@ -96,6 +96,22 @@
             android:name=".SunshineForegroundService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Sunshine's eyes: Tier-1 accessibility engine.
+             Eyes-only for now — tree dumps and window events.
+             Permissions are surfaced later when hands come online. -->
+        <service
+            android:name=".accessibility.SunshineAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/sunshine_accessibility_service_config" />
+        </service>
     </application>
 
 </manifest>
