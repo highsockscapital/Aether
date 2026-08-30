@@ -204,8 +204,9 @@ class SunshineAccessibilityService : AccessibilityService() {
      */
     fun clickViewId(idSuffix: String): Boolean {
         val root = rootInActiveWindow ?: return false
-        val matches = root.findAccessibilityNodeInfosByViewId(idSuffix)
-        val hit = matches?.firstOrNull() ?: return false
+        // findAccessibilityNodeInfosByViewId() requires the fully-qualified
+        // name; walk the tree so `"btn_search"` matches `com.app:id/btn_search`.
+        val hit = findByViewIdSuffix(root, idSuffix) ?: return false
         return clickNodeAndAncestors(hit)
     }
 
@@ -302,6 +303,18 @@ class SunshineAccessibilityService : AccessibilityService() {
         }
         Log.w(TAG, "no clickable ancestor found")
         return false
+    }
+
+    private fun findByViewIdSuffix(
+        node: AccessibilityNodeInfo?,
+        suffix: String
+    ): AccessibilityNodeInfo? {
+        if (node == null) return null
+        if (node.viewIdResourceName?.endsWith(suffix) == true) return node
+        for (i in 0 until node.childCount) {
+            findByViewIdSuffix(node.getChild(i), suffix)?.let { return it }
+        }
+        return null
     }
 
     private fun firstScrollable(
