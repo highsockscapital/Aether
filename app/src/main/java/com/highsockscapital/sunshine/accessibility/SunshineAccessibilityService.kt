@@ -38,6 +38,42 @@ class SunshineAccessibilityService : AccessibilityService() {
             private set
 
         fun isActive(): Boolean = instance != null
+
+        /**
+         * Constitution, article III: the blacklist.
+         * Default-sensitive packages (banking, password managers, authenticators).
+         * The user can extend or relax this at runtime from Sunshine settings.
+         */
+        val sensitivePackages: MutableSet<String> = mutableSetOf(
+            "com.onepassword.android",
+            "com.x8bit.bitwarden",
+            "com.lastpass.lpandroid",
+            "com.kunzisoft.keepass.free",
+            "com.kunzisoft.keepass.libre",
+            "com.google.android.apps.authenticator2",
+            "com.authy.authy",
+            "com.microsoft.authenticator",
+            // Banking (grow as needed — these are defaults, not doctrine)
+            "com.chase.sig.android",
+            "com.bankofamerica.digitalwallet",
+            "com.wf.wellsfargomobile",
+            "com.ci.capitalone",
+            "com.revolut",
+            "com.nubank",
+        )
+
+        fun addSensitivePackage(pkg: String) {
+            sensitivePackages.add(pkg)
+            Log.i(TAG, "sensitive-package added: $pkg")
+        }
+
+        fun removeSensitivePackage(pkg: String) {
+            sensitivePackages.remove(pkg)
+            Log.i(TAG, "sensitive-package removed: $pkg")
+        }
+
+        fun isSensitiveForeground(pkg: String?): Boolean =
+            pkg != null && sensitivePackages.contains(pkg)
     }
 
     override fun onServiceConnected() {
@@ -60,6 +96,13 @@ class SunshineAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val pkg = event?.packageName?.toString() ?: return
+
+        // Constitution: Sunshine looks away from sensitive apps.
+        if (isSensitiveForeground(pkg)) {
+            Log.i(TAG, "blacklist: eyes averted from $pkg")
+            return
+        }
+
         val className = event.className?.toString() ?: "unknown"
 
         when (event.eventType) {
@@ -156,6 +199,7 @@ class SunshineAccessibilityService : AccessibilityService() {
      * that lie about being clickable.
      */
     fun tapAt(x: Float, y: Float, onResult: (Boolean) -> Unit = {}): Boolean {
+        if (refuseIfSensitive()) { onResult(false); return false }
         val path = Path().apply { moveTo(x, y) }
         val stroke = GestureDescription.StrokeDescription(path, 0L, 80L)
         return dispatchGesture(
@@ -176,6 +220,7 @@ class SunshineAccessibilityService : AccessibilityService() {
         durationMs: Long = 300L,
         onResult: (Boolean) -> Unit = {}
     ): Boolean {
+        if (refuseIfSensitive()) { onResult(false); return false }
         val path = Path().apply { moveTo(fromX, fromY); lineTo(toX, toY) }
         val stroke = GestureDescription.StrokeDescription(path, 0L, durationMs)
         return dispatchGesture(
@@ -193,6 +238,7 @@ class SunshineAccessibilityService : AccessibilityService() {
      * so nested labels on a button still work.
      */
     fun clickText(text: String): Boolean {
+        if (refuseIfSensitive()) return false
         val root = rootInActiveWindow ?: return false
         val matches = root.findAccessibilityNodeInfosByText(text)
         val hit = matches?.firstOrNull() ?: return false
@@ -203,6 +249,7 @@ class SunshineAccessibilityService : AccessibilityService() {
      * Click the first node matching view id suffix, e.g. "btn_search".
      */
     fun clickViewId(idSuffix: String): Boolean {
+        if (refuseIfSensitive()) return false
         val root = rootInActiveWindow ?: return false
         // findAccessibilityNodeInfosByViewId() requires the fully-qualified
         // name; walk the tree so `"btn_search"` matches `com.app:id/btn_search`.
@@ -215,6 +262,7 @@ class SunshineAccessibilityService : AccessibilityService() {
      * synthetic keystrokes for Compose and web views.
      */
     fun typeIntoFocused(text: String): Boolean {
+        if (refuseIfSensitive()) return false
         val root = rootInActiveWindow ?: return false
         val target = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
         val args = Bundle().apply {
@@ -267,12 +315,30 @@ class SunshineAccessibilityService : AccessibilityService() {
     /**
      * Flattened snapshot of the current UI, one line per node,
      * for Sunshine's toolkit consumption — eyes she can actually use.
+     * Returns a sentinel line when the foreground app is blacklisted.
      */
     fun describeScreen(): List<String> {
         val root = rootInActiveWindow ?: return emptyList()
+        val pkg = root.packageName?.toString()
+        if (isSensitiveForeground(pkg)) {
+            Log.w(TAG, "describeScreen refused: sensitive foreground $pkg")
+            return listOf(
+                "[Sunshine looks away: the foreground app is on the sensitive blacklist]"
+            )
+        }
         val lines = mutableListOf<String>()
         collectNodeDescriptions(root, 0, lines)
         return lines
+    }
+
+    /**
+     * Hands refuse sensitive foregrounds. Called by tap/swipe/click helpers.
+     */
+    private fun refuseIfSensitive(): Boolean {
+        val pkg = rootInActiveWindow?.packageName?.toString()
+        val sensitive = isSensitiveForeground(pkg)
+        if (sensitive) Log.w(TAG, "hand refused: sensitive foreground $pkg")
+        return sensitive
     }
 
     // ------------------------------------------------------------------
